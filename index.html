@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- このファイルは build.mjs が生成します。編集は src/ 側で行い、node build.mjs を実行してください。 -->
 <html lang="ja">
 <head>
   <meta charset="utf-8">
@@ -1085,15 +1086,19 @@
   </dialog>
 
   <script>
+    "use strict";
+
+    // ---- src/data.js ----
+    // 人物データの正規化・入力値の解釈・続柄の推定。
+    // DOMもCanvasも触らない純粋な処理だけを置く（tests/unit から直接読み込む）。
+
     const PAPER_SIZES = {
       a3: { key: "a3", label: "A3", widthMm: 420, heightMm: 297, ratio: 420 / 297 },
       a4: { key: "a4", label: "A4", widthMm: 297, heightMm: 210, ratio: 297 / 210 }
     };
+
     const DEFAULT_PAPER_SIZE = "a3";
-    const PEOPLE_KEY = "familytree.people";
-    const PAPER_KEY = "familytree.paperSize";
-    const BACKUP_KEY = "familytree.backups";
-    const BACKUP_LIMIT = 5;
+
     const samplePeople = [
       { id: 1, name: "野介 宗一郎", years: "1888-1962", generation: 0, spouseId: 2, parentIds: [], relationshipType: "married" },
       { id: 2, name: "野介 ハナ", years: "1892-1970", generation: 0, spouseId: 1, parentIds: [], relationshipType: "married" },
@@ -1115,99 +1120,15 @@
       { id: 18, name: "野介 蓮", years: "2008-", generation: 4, spouseId: null, parentIds: [13, 14], relationshipType: "married" },
       { id: 19, name: "佐藤 凛", years: "2006-", generation: 4, spouseId: null, parentIds: [15, 16], relationshipType: "married" }
     ];
+
     const sampleRelationLabels = {
       1: "高祖父", 2: "高祖母", 3: "祖父", 4: "祖母", 5: "大叔父", 6: "大叔母",
       7: "父", 8: "母", 9: "叔母", 10: "叔父", 11: "叔父", 12: "叔母",
       13: "本人", 14: "配偶者", 15: "いとこ", 16: "いとこの配偶者",
       17: "長女", 18: "長男", 19: "子"
     };
+
     for (const person of samplePeople) person.relation = sampleRelationLabels[person.id] || "";
-
-    let people = loadPeople();
-    let paperSize = loadPaperSize();
-    let selectedId = people[0]?.id ?? 1;
-    let manualLayoutMode = false;
-    let draggedPersonId = null;
-    let dragOffset = { x: 0, y: 0 };
-    let lastLayout = null;
-
-    const form = document.getElementById("personForm");
-    const fields = {
-      id: document.getElementById("personId"),
-      name: document.getElementById("name"),
-      years: document.getElementById("years"),
-      generation: document.getElementById("generation"),
-      spouseId: document.getElementById("spouseId"),
-      relationshipType: document.getElementById("relationshipType"),
-      relation: document.getElementById("relation"),
-      parentIds: document.getElementById("parentIds"),
-      parentRelationshipType: document.getElementById("parentRelationshipType")
-    };
-    const canvas = document.getElementById("treeCanvas");
-    const peopleList = document.getElementById("peopleList");
-    const jsonEditor = document.getElementById("jsonEditor");
-    const status = document.getElementById("status");
-    const summary = document.getElementById("summary");
-    const layoutSummary = document.getElementById("layoutSummary");
-    const paperSizeSelect = document.getElementById("paperSize");
-    const paper = document.querySelector(".paper");
-    const jsonDownloadBox = document.getElementById("jsonDownloadBox");
-    const jsonDownloadLink = document.getElementById("jsonDownloadLink");
-    const jsonFileInput = document.getElementById("jsonFileInput");
-    const snackbar = document.getElementById("snackbar");
-    const undoBtn = document.getElementById("undoBtn");
-    const backupBox = document.getElementById("backupBox");
-    const backupList = document.getElementById("backupList");
-    const confirmDialog = document.getElementById("confirmDialog");
-    const confirmTitle = document.getElementById("confirmTitle");
-    const confirmBody = document.getElementById("confirmBody");
-    const confirmOkBtn = document.getElementById("confirmOkBtn");
-    const confirmCancelBtn = document.getElementById("confirmCancelBtn");
-    let lastJsonUrl = "";
-    let pendingUndo = null;
-
-    function getPaperSpec() {
-      return PAPER_SIZES[paperSize] || PAPER_SIZES[DEFAULT_PAPER_SIZE];
-    }
-
-    function loadPaperSize() {
-      try {
-        const saved = localStorage.getItem(PAPER_KEY);
-        return PAPER_SIZES[saved] ? saved : DEFAULT_PAPER_SIZE;
-      } catch {
-        return DEFAULT_PAPER_SIZE;
-      }
-    }
-
-    function savePaperSize() {
-      try {
-        localStorage.setItem(PAPER_KEY, paperSize);
-      } catch (error) {
-        console.warn("familytree: 用紙サイズを保存できませんでした", error);
-      }
-    }
-
-    function applyPaperSize() {
-      const spec = getPaperSpec();
-      paperSizeSelect.value = spec.key;
-      paper.style.aspectRatio = `${spec.widthMm} / ${spec.heightMm}`;
-      paper.dataset.paperSize = spec.key;
-      paper.dataset.paperDimensions = `${spec.widthMm}x${spec.heightMm}mm`;
-      document.documentElement.style.setProperty("--paper-ratio", `${spec.widthMm} / ${spec.heightMm}`);
-      document.documentElement.style.setProperty("--paper-width-mm", spec.widthMm);
-      document.documentElement.style.setProperty("--paper-height-mm", spec.heightMm);
-      const printStyle = document.getElementById("printPaperStyle");
-      printStyle.textContent = `@page { size: ${spec.label} landscape; margin: 0; }`;
-    }
-
-    function loadPeople() {
-      try {
-        const saved = localStorage.getItem(PEOPLE_KEY);
-        return saved ? normalizePeople(JSON.parse(saved)) : normalizePeople(structuredClone(samplePeople));
-      } catch {
-        return normalizePeople(structuredClone(samplePeople));
-      }
-    }
 
     function normalizePeople(input) {
       if (!Array.isArray(input)) return [];
@@ -1270,6 +1191,487 @@
 
     function clamp(value, min, max) {
       return Math.min(max, Math.max(min, value));
+    }
+
+    function parseParentIds(value) {
+      return value
+        .split(",")
+        .map((part) => Number(part.trim()))
+        .filter((id) => Number.isFinite(id) && id > 0)
+        .slice(0, 2);
+    }
+
+    function parseSpouseIds(value) {
+      return normalizeSpouseIds(String(value || "").split(","), null);
+    }
+
+    function buildSpouseRelationshipTypes(value, selectedType, previousTypes = {}) {
+      const spouseIds = parseSpouseIds(value);
+      if (selectedType === "mixed") {
+        return Object.fromEntries(spouseIds.map((spouseId) => [
+          String(spouseId), previousTypes[String(spouseId)] || "married"
+        ]));
+      }
+      return Object.fromEntries(spouseIds.map((spouseId) => [String(spouseId), selectedType]));
+    }
+
+    function buildParentRelationshipTypes(value, selectedType, previousTypes = {}) {
+      const parentIds = parseParentIds(value);
+      if (selectedType === "mixed") {
+        return Object.fromEntries(parentIds.map((parentId) => [
+          String(parentId), previousTypes[String(parentId)] || "biological"
+        ]));
+      }
+      return Object.fromEntries(parentIds.map((parentId) => [String(parentId), selectedType]));
+    }
+
+    function parentKey(parentIds) {
+      return parentIds.slice().sort((a, b) => a - b).join(",");
+    }
+
+    function yearStart(years) {
+      const match = String(years || "").match(/(\d{4})/);
+      return match ? Number(match[1]) : Infinity;
+    }
+
+    function nextId(people) {
+      return people.reduce((max, person) => Math.max(max, person.id), 0) + 1;
+    }
+
+    function suggestRelationFor({ people, currentId, parentIds, hasSpouse, generation }) {
+      if (parentIds.length) {
+        const key = parentKey(parentIds);
+        const siblings = people
+          .filter((person) => parentKey(person.parentIds) === key)
+          .sort((a, b) => yearStart(a.years) - yearStart(b.years) || a.id - b.id);
+        const currentIndex = siblings.findIndex((person) => person.id === currentId);
+        const order = currentIndex >= 0 ? currentIndex + 1 : siblings.length + 1;
+        return { relation: `第${order}子`, message: "親IDから続柄候補を入れました。必要なら自由に修正できます。" };
+      }
+      if (hasSpouse) {
+        return { relation: "配偶者", message: "配偶者の続柄候補を入れました。" };
+      }
+      return {
+        relation: generation === 0 ? "先祖" : "本人",
+        message: "続柄候補を入れました。必要なら自由に修正できます。"
+      };
+    }
+
+    // ---- src/layout.js ----
+    // 世代ごとの自動配置。人物データと用紙サイズだけから座標を決める純粋な処理。
+
+
+    function buildLayout(sourcePeople, width, height) {
+      const sorted = normalizePeople(sourcePeople);
+      const personMap = new Map(sorted.map((person) => [person.id, person]));
+      const generations = [...new Set(sorted.map((person) => person.generation))].sort((a, b) => a - b);
+      const box = { w: 156, h: 72 };
+      const coupleGap = 18;
+      const unitGap = 46;
+      const margin = 78;
+      const yGap = generations.length > 1 ? (height - margin * 2) / (generations.length - 1) : 0;
+      const positions = new Map();
+      const unitsByGeneration = new Map();
+
+      for (const generation of generations) {
+        const members = sorted.filter((person) => person.generation === generation);
+        const orderScore = (person) => {
+          const parentXs = person.parentIds.map((id) => positions.get(id)?.x).filter(Number.isFinite);
+          if (parentXs.length) return parentXs.reduce((sum, x) => sum + x, 0) / parentXs.length;
+          return person.id * 10000;
+        };
+        members.sort((a, b) => orderScore(a) - orderScore(b) || a.id - b.id);
+
+        const memberMap = new Map(members.map((person) => [person.id, person]));
+        const visited = new Set();
+        const units = [];
+        for (const person of members) {
+          if (visited.has(person.id)) continue;
+          const component = [];
+          const queue = [person];
+          visited.add(person.id);
+          while (queue.length) {
+            const current = queue.shift();
+            component.push(current);
+            for (const spouseId of current.spouseIds) {
+              const spouse = memberMap.get(spouseId);
+              if (spouse && !visited.has(spouse.id)) {
+                visited.add(spouse.id);
+                queue.push(spouse);
+              }
+            }
+          }
+          component.sort((a, b) => orderScore(a) - orderScore(b) || a.id - b.id);
+          units.push({ people: component, width: box.w * component.length + coupleGap * Math.max(0, component.length - 1) });
+        }
+
+        const totalWidth = units.reduce((sum, unit) => sum + unit.width, 0) + Math.max(0, units.length - 1) * unitGap;
+        let cursor = -totalWidth / 2;
+        const y = margin + generations.indexOf(generation) * yGap;
+        for (const unit of units) {
+          const start = cursor;
+          unit.center = start + unit.width / 2;
+          unit.y = y;
+          unit.people.forEach((unitPerson, index) => {
+            positions.set(unitPerson.id, { x: start + box.w / 2 + index * (box.w + coupleGap), y });
+          });
+          cursor += unit.width + unitGap;
+        }
+        unitsByGeneration.set(generation, units);
+      }
+
+      const rawBounds = getBounds([...positions.values()], box);
+      const contentWidth = rawBounds.maxX - rawBounds.minX;
+      const contentHeight = rawBounds.maxY - rawBounds.minY;
+      const scale = Math.min((width - margin * 2) / contentWidth, (height - margin * 2) / contentHeight, 1.35);
+      const offsetX = width / 2 - ((rawBounds.minX + rawBounds.maxX) / 2) * scale;
+      const offsetY = height / 2 - ((rawBounds.minY + rawBounds.maxY) / 2) * scale;
+      const scaled = new Map();
+      for (const [id, pos] of positions) {
+        scaled.set(id, { x: pos.x * scale + offsetX, y: pos.y * scale + offsetY });
+      }
+      const scaledBox = { w: box.w * scale, h: box.h * scale };
+      for (const person of sorted) {
+        if (!person.position) continue;
+        scaled.set(person.id, {
+          x: clamp(person.position.x * width, scaledBox.w / 2 + 12, width - scaledBox.w / 2 - 12),
+          y: clamp(person.position.y * height, scaledBox.h / 2 + 12, height - scaledBox.h / 2 - 12)
+        });
+      }
+
+      return { people: sorted, personMap, positions: scaled, generations, box: scaledBox, scale, unitsByGeneration };
+    }
+
+    function getBounds(points, box) {
+      if (!points.length) return { minX: 0, maxX: 1, minY: 0, maxY: 1 };
+      return points.reduce((bounds, pos) => ({
+        minX: Math.min(bounds.minX, pos.x - box.w / 2),
+        maxX: Math.max(bounds.maxX, pos.x + box.w / 2),
+        minY: Math.min(bounds.minY, pos.y - box.h / 2),
+        maxY: Math.max(bounds.maxY, pos.y + box.h / 2)
+      }), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+    }
+
+    // ---- src/draw.js ----
+    // Canvasへの描画。DOMには触れず、配色は呼び出し側から受け取る。
+
+    // 用紙は常に白なので、線の色はテーマではなく印刷結果に合わせる。
+    const DEFAULT_COLORS = { marriage: "#8f4b53", child: "#3f4947" };
+
+
+    function drawFamilyTree(targetCanvas, sourcePeople, colors = DEFAULT_COLORS) {
+      const ctx = targetCanvas.getContext("2d");
+      const width = targetCanvas.width;
+      const height = targetCanvas.height;
+      const layout = buildLayout(sourcePeople, width, height);
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+
+      drawGenerationBands(ctx, layout, width);
+      drawParentLines(ctx, layout, colors);
+      drawMarriageLines(ctx, layout, colors);
+      for (const person of layout.people) {
+        drawPerson(ctx, person, layout.positions.get(person.id), layout.box);
+      }
+      return layout;
+    }
+
+    function drawGenerationBands(ctx, layout, width) {
+      ctx.save();
+      ctx.font = `${Math.max(11, 13 * layout.scale)}px Roboto, "Noto Sans JP", system-ui, sans-serif`;
+      ctx.fillStyle = "#6f7976";
+      ctx.strokeStyle = "#e3e9e7";
+      ctx.lineWidth = Math.max(1, layout.scale);
+      for (const generation of layout.generations) {
+        const first = layout.people.find((person) => person.generation === generation);
+        const y = first ? layout.positions.get(first.id).y : 0;
+        ctx.beginPath();
+        ctx.moveTo(36, y);
+        ctx.lineTo(width - 36, y);
+        ctx.stroke();
+        ctx.fillText(`第${generation}世代`, 42, y - layout.box.h / 2 - 12);
+      }
+      ctx.restore();
+    }
+
+    function drawMarriageLines(ctx, layout, colors = DEFAULT_COLORS) {
+      const drawn = new Set();
+      ctx.save();
+      ctx.lineWidth = Math.max(2, 2.5 * layout.scale);
+      ctx.strokeStyle = colors.marriage;
+      for (const person of layout.people) {
+        for (const spouseId of person.spouseIds) {
+          const pairKey = [person.id, spouseId].sort((a, b) => a - b).join(":");
+          if (drawn.has(pairKey)) continue;
+          const spouse = layout.personMap.get(spouseId);
+          const a = layout.positions.get(person.id);
+          const b = layout.positions.get(spouseId);
+          if (!spouse || !a || !b || spouse.generation !== person.generation) continue;
+          const left = a.x < b.x ? a : b;
+          const right = a.x < b.x ? b : a;
+          const relationshipType = person.spouseRelationshipTypes[String(spouseId)] || person.relationshipType || "married";
+          const lineStyle = getSpouseLineStyle(relationshipType, colors);
+          ctx.setLineDash(lineStyle.dash.map((value) => value * layout.scale));
+          ctx.strokeStyle = lineStyle.color;
+          ctx.beginPath();
+          ctx.moveTo(left.x + layout.box.w / 2, left.y);
+          ctx.lineTo(right.x - layout.box.w / 2, right.y);
+          ctx.stroke();
+          drawn.add(pairKey);
+        }
+      }
+      ctx.restore();
+    }
+
+    function getSpouseLineStyle(relationshipType, colors = DEFAULT_COLORS) {
+      if (relationshipType === "divorced") return { color: "#ba1a1a", dash: [8, 6] };
+      if (relationshipType === "widowed") return { color: "#6f7976", dash: [2, 5] };
+      return { color: colors.marriage, dash: [] };
+    }
+
+    function drawParentLines(ctx, layout, colors = DEFAULT_COLORS) {
+      const groups = new Map();
+      for (const child of layout.people) {
+        if (!child.parentIds.length) continue;
+        const parentIds = child.parentIds.slice().sort((a, b) => a - b);
+        const parentTypes = parentIds.map((parentId) => child.parentRelationshipTypes[String(parentId)] || "biological");
+        const key = `${parentIds.join(",")}|${parentTypes.join(",")}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(child);
+      }
+
+      ctx.save();
+      ctx.strokeStyle = colors.child;
+      ctx.lineWidth = Math.max(1.4, 2 * layout.scale);
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      for (const [groupKey, children] of groups) {
+        const [parentKey, typeKey] = groupKey.split("|");
+        const parentIds = parentKey.split(",").map(Number);
+        const parentTypes = typeKey.split(",");
+        const parentPositions = parentIds.map((id) => layout.positions.get(id)).filter(Boolean);
+        const childPositions = children.map((child) => layout.positions.get(child.id)).filter(Boolean);
+        if (!parentPositions.length || !childPositions.length) continue;
+        const parentBottomY = Math.max(...parentPositions.map((pos) => pos.y + layout.box.h / 2));
+        const childTopY = Math.min(...childPositions.map((pos) => pos.y - layout.box.h / 2));
+        const verticalGap = Math.max(12 * layout.scale, childTopY - parentBottomY);
+        const busY = parentBottomY + verticalGap * 0.48;
+        const parentXs = parentPositions.map((pos) => pos.x);
+        const childXs = childPositions.map((pos) => pos.x);
+        const minBusX = Math.min(...parentXs, ...childXs);
+        const maxBusX = Math.max(...parentXs, ...childXs);
+
+        const lineStyle = getParentLineStyle(parentTypes, colors);
+        ctx.strokeStyle = lineStyle.color;
+        ctx.setLineDash(lineStyle.dash.map((value) => value * layout.scale));
+        ctx.beginPath();
+        for (const parentPos of parentPositions) {
+          ctx.moveTo(parentPos.x, parentPos.y + layout.box.h / 2);
+          ctx.lineTo(parentPos.x, busY);
+        }
+        ctx.moveTo(minBusX, busY);
+        ctx.lineTo(maxBusX, busY);
+        for (const childPos of childPositions) {
+          ctx.moveTo(childPos.x, busY);
+          ctx.lineTo(childPos.x, childPos.y - layout.box.h / 2);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function getParentLineStyle(parentTypes, colors = DEFAULT_COLORS) {
+      if (parentTypes.includes("adopted")) return { color: "#8a5a2b", dash: [7, 5] };
+      if (parentTypes.includes("step")) return { color: "#46617a", dash: [2, 5] };
+      if (parentTypes.includes("unknown")) return { color: "#6f7976", dash: [5, 4] };
+      return { color: colors.child, dash: [] };
+    }
+
+    function drawPerson(ctx, person, pos, box) {
+      if (!pos) return;
+      const x = pos.x - box.w / 2;
+      const y = pos.y - box.h / 2;
+      const radius = Math.min(18, 14 * Math.max(0.7, box.w / 156));
+
+      ctx.save();
+      roundedRect(ctx, x, y, box.w, box.h, radius);
+      ctx.fillStyle = "#f2f9f7";
+      ctx.fill();
+      ctx.strokeStyle = "#a8c5c0";
+      ctx.lineWidth = Math.max(1, 1.2 * box.w / 156);
+      ctx.stroke();
+
+      ctx.fillStyle = "#171d1b";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const nameSize = Math.max(9, 15 * box.w / 156);
+      const relationSize = Math.max(8, 10 * box.w / 156);
+      const yearsSize = Math.max(8, 11 * box.w / 156);
+      ctx.font = `700 ${nameSize}px Roboto, "Noto Sans JP", system-ui, "Yu Gothic", sans-serif`;
+      fitText(ctx, person.name, pos.x, person.relation ? pos.y - relationSize * 1.7 : pos.y - yearsSize * 0.55, box.w - 16);
+      if (person.relation) {
+        ctx.font = `600 ${relationSize}px Roboto, "Noto Sans JP", system-ui, "Yu Gothic", sans-serif`;
+        ctx.fillStyle = "#006a63";
+        fitText(ctx, person.relation, pos.x, pos.y, box.w - 18);
+      }
+      ctx.font = `${yearsSize}px Roboto, "Noto Sans JP", system-ui, "Yu Gothic", sans-serif`;
+      ctx.fillStyle = "#3f4947";
+      fitText(ctx, person.years || `ID ${person.id}`, pos.x, pos.y + (person.relation ? relationSize * 1.7 : yearsSize * 1.05), box.w - 18);
+      ctx.restore();
+    }
+
+    function roundedRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    function fitText(ctx, text, x, y, maxWidth) {
+      if (ctx.measureText(text).width <= maxWidth) {
+        ctx.fillText(text, x, y);
+        return;
+      }
+      let clipped = text;
+      while (clipped.length > 1 && ctx.measureText(`${clipped}…`).width > maxWidth) {
+        clipped = clipped.slice(0, -1);
+      }
+      ctx.fillText(`${clipped}…`, x, y);
+    }
+
+    // ---- src/app.js ----
+    // 画面の組み立てとイベント配線。DOM・localStorage・印刷まわりはここだけに置く。
+
+
+    const PEOPLE_KEY = "familytree.people";
+
+    const PAPER_KEY = "familytree.paperSize";
+
+    const BACKUP_KEY = "familytree.backups";
+
+    const BACKUP_LIMIT = 5;
+
+    let people = loadPeople();
+
+    let paperSize = loadPaperSize();
+
+    let selectedId = people[0]?.id ?? 1;
+
+    let manualLayoutMode = false;
+
+    let draggedPersonId = null;
+
+    let dragOffset = { x: 0, y: 0 };
+
+    let lastLayout = null;
+
+    const form = document.getElementById("personForm");
+
+    const fields = {
+      id: document.getElementById("personId"),
+      name: document.getElementById("name"),
+      years: document.getElementById("years"),
+      generation: document.getElementById("generation"),
+      spouseId: document.getElementById("spouseId"),
+      relationshipType: document.getElementById("relationshipType"),
+      relation: document.getElementById("relation"),
+      parentIds: document.getElementById("parentIds"),
+      parentRelationshipType: document.getElementById("parentRelationshipType")
+    };
+
+    const canvas = document.getElementById("treeCanvas");
+
+    const peopleList = document.getElementById("peopleList");
+
+    const jsonEditor = document.getElementById("jsonEditor");
+
+    const status = document.getElementById("status");
+
+    const summary = document.getElementById("summary");
+
+    const layoutSummary = document.getElementById("layoutSummary");
+
+    const paperSizeSelect = document.getElementById("paperSize");
+
+    const paper = document.querySelector(".paper");
+
+    const jsonDownloadBox = document.getElementById("jsonDownloadBox");
+
+    const jsonDownloadLink = document.getElementById("jsonDownloadLink");
+
+    const jsonFileInput = document.getElementById("jsonFileInput");
+
+    const snackbar = document.getElementById("snackbar");
+
+    const undoBtn = document.getElementById("undoBtn");
+
+    const backupBox = document.getElementById("backupBox");
+
+    const backupList = document.getElementById("backupList");
+
+    const confirmDialog = document.getElementById("confirmDialog");
+
+    const confirmTitle = document.getElementById("confirmTitle");
+
+    const confirmBody = document.getElementById("confirmBody");
+
+    const confirmOkBtn = document.getElementById("confirmOkBtn");
+
+    const confirmCancelBtn = document.getElementById("confirmCancelBtn");
+
+    let lastJsonUrl = "";
+
+    let pendingUndo = null;
+
+    function getPaperSpec() {
+      return PAPER_SIZES[paperSize] || PAPER_SIZES[DEFAULT_PAPER_SIZE];
+    }
+
+    function loadPaperSize() {
+      try {
+        const saved = localStorage.getItem(PAPER_KEY);
+        return PAPER_SIZES[saved] ? saved : DEFAULT_PAPER_SIZE;
+      } catch {
+        return DEFAULT_PAPER_SIZE;
+      }
+    }
+
+    function savePaperSize() {
+      try {
+        localStorage.setItem(PAPER_KEY, paperSize);
+      } catch (error) {
+        console.warn("familytree: 用紙サイズを保存できませんでした", error);
+      }
+    }
+
+    function applyPaperSize() {
+      const spec = getPaperSpec();
+      paperSizeSelect.value = spec.key;
+      paper.style.aspectRatio = `${spec.widthMm} / ${spec.heightMm}`;
+      paper.dataset.paperSize = spec.key;
+      paper.dataset.paperDimensions = `${spec.widthMm}x${spec.heightMm}mm`;
+      document.documentElement.style.setProperty("--paper-ratio", `${spec.widthMm} / ${spec.heightMm}`);
+      document.documentElement.style.setProperty("--paper-width-mm", spec.widthMm);
+      document.documentElement.style.setProperty("--paper-height-mm", spec.heightMm);
+      const printStyle = document.getElementById("printPaperStyle");
+      printStyle.textContent = `@page { size: ${spec.label} landscape; margin: 0; }`;
+    }
+
+    function loadPeople() {
+      try {
+        const saved = localStorage.getItem(PEOPLE_KEY);
+        return saved ? normalizePeople(JSON.parse(saved)) : normalizePeople(structuredClone(samplePeople));
+      } catch {
+        return normalizePeople(structuredClone(samplePeople));
+      }
     }
 
     function savePeople() {
@@ -1399,10 +1801,6 @@
       });
     }
 
-    function nextId() {
-      return people.reduce((max, person) => Math.max(max, person.id), 0) + 1;
-    }
-
     function setStatus(message, options = {}) {
       const { tone = "default", persistent = false, undo = null } = options;
       status.textContent = message;
@@ -1423,75 +1821,11 @@
       pendingUndo = null;
     }
 
-    function parseParentIds(value) {
-      return value
-        .split(",")
-        .map((part) => Number(part.trim()))
-        .filter((id) => Number.isFinite(id) && id > 0)
-        .slice(0, 2);
-    }
-
-    function parseSpouseIds(value) {
-      return normalizeSpouseIds(String(value || "").split(","), null);
-    }
-
-    function buildSpouseRelationshipTypes(value, selectedType, previousTypes = {}) {
-      const spouseIds = parseSpouseIds(value);
-      if (selectedType === "mixed") {
-        return Object.fromEntries(spouseIds.map((spouseId) => [
-          String(spouseId), previousTypes[String(spouseId)] || "married"
-        ]));
-      }
-      return Object.fromEntries(spouseIds.map((spouseId) => [String(spouseId), selectedType]));
-    }
-
-    function buildParentRelationshipTypes(value, selectedType, previousTypes = {}) {
-      const parentIds = parseParentIds(value);
-      if (selectedType === "mixed") {
-        return Object.fromEntries(parentIds.map((parentId) => [
-          String(parentId), previousTypes[String(parentId)] || "biological"
-        ]));
-      }
-      return Object.fromEntries(parentIds.map((parentId) => [String(parentId), selectedType]));
-    }
-
-    function parentKey(parentIds) {
-      return parentIds.slice().sort((a, b) => a - b).join(",");
-    }
-
-    function yearStart(years) {
-      const match = String(years || "").match(/(\d{4})/);
-      return match ? Number(match[1]) : Infinity;
-    }
-
-    function suggestRelation() {
-      const currentId = toNullableNumber(fields.id.value);
-      const parentIds = parseParentIds(fields.parentIds.value);
-      if (parentIds.length) {
-        const key = parentKey(parentIds);
-        const siblings = people
-          .filter((person) => parentKey(person.parentIds) === key)
-          .sort((a, b) => yearStart(a.years) - yearStart(b.years) || a.id - b.id);
-        const currentIndex = siblings.findIndex((person) => person.id === currentId);
-        const order = currentIndex >= 0 ? currentIndex + 1 : siblings.length + 1;
-        fields.relation.value = `第${order}子`;
-        setStatus("親IDから続柄候補を入れました。必要なら自由に修正できます。");
-        return;
-      }
-      if (toNullableNumber(fields.spouseId.value)) {
-        fields.relation.value = "配偶者";
-        setStatus("配偶者の続柄候補を入れました。");
-        return;
-      }
-      fields.relation.value = Number(fields.generation.value) === 0 ? "先祖" : "本人";
-      setStatus("続柄候補を入れました。必要なら自由に修正できます。");
-    }
-
     function selectPerson(id) {
       selectedId = id;
       const person = people.find((item) => item.id === id);
       if (!person) {
-        fields.id.value = nextId();
+        fields.id.value = nextId(people);
         fields.name.value = "";
         fields.relation.value = "";
         fields.years.value = "";
@@ -1513,6 +1847,18 @@
       fields.parentIds.value = person.parentIds.join(",");
       const parentTypes = person.parentIds.map((parentId) => person.parentRelationshipTypes[String(parentId)] || "biological");
       fields.parentRelationshipType.value = parentTypes.length && parentTypes.every((type) => type === parentTypes[0]) ? parentTypes[0] : "mixed";
+    }
+
+    function suggestRelation() {
+      const suggestion = suggestRelationFor({
+        people,
+        currentId: toNullableNumber(fields.id.value),
+        parentIds: parseParentIds(fields.parentIds.value),
+        hasSpouse: Boolean(toNullableNumber(fields.spouseId.value)),
+        generation: Number(fields.generation.value)
+      });
+      fields.relation.value = suggestion.relation;
+      setStatus(suggestion.message);
     }
 
     function upsertPerson(event) {
@@ -1702,13 +2048,21 @@
       });
     }
 
+    function treeColors() {
+      const styles = getComputedStyle(document.documentElement);
+      return {
+        marriage: styles.getPropertyValue("--marriage").trim(),
+        child: styles.getPropertyValue("--child").trim()
+      };
+    }
+
     function renderPreview() {
       const rect = canvas.parentElement.getBoundingClientRect();
       const width = Math.max(900, Math.round(rect.width * window.devicePixelRatio));
       const height = Math.round(width / getPaperSpec().ratio);
       canvas.width = width;
       canvas.height = height;
-      drawFamilyTree(canvas, people);
+      lastLayout = drawFamilyTree(canvas, people, treeColors());
     }
 
     function canvasPoint(event) {
@@ -1778,285 +2132,6 @@
       savePeople();
       renderAll();
       setStatus("配置を保存しました。");
-    }
-
-    function buildLayout(sourcePeople, width, height) {
-      const sorted = normalizePeople(sourcePeople);
-      const personMap = new Map(sorted.map((person) => [person.id, person]));
-      const generations = [...new Set(sorted.map((person) => person.generation))].sort((a, b) => a - b);
-      const box = { w: 156, h: 72 };
-      const coupleGap = 18;
-      const unitGap = 46;
-      const margin = 78;
-      const yGap = generations.length > 1 ? (height - margin * 2) / (generations.length - 1) : 0;
-      const positions = new Map();
-      const unitsByGeneration = new Map();
-
-      for (const generation of generations) {
-        const members = sorted.filter((person) => person.generation === generation);
-        const orderScore = (person) => {
-          const parentXs = person.parentIds.map((id) => positions.get(id)?.x).filter(Number.isFinite);
-          if (parentXs.length) return parentXs.reduce((sum, x) => sum + x, 0) / parentXs.length;
-          return person.id * 10000;
-        };
-        members.sort((a, b) => orderScore(a) - orderScore(b) || a.id - b.id);
-
-        const memberMap = new Map(members.map((person) => [person.id, person]));
-        const visited = new Set();
-        const units = [];
-        for (const person of members) {
-          if (visited.has(person.id)) continue;
-          const component = [];
-          const queue = [person];
-          visited.add(person.id);
-          while (queue.length) {
-            const current = queue.shift();
-            component.push(current);
-            for (const spouseId of current.spouseIds) {
-              const spouse = memberMap.get(spouseId);
-              if (spouse && !visited.has(spouse.id)) {
-                visited.add(spouse.id);
-                queue.push(spouse);
-              }
-            }
-          }
-          component.sort((a, b) => orderScore(a) - orderScore(b) || a.id - b.id);
-          units.push({ people: component, width: box.w * component.length + coupleGap * Math.max(0, component.length - 1) });
-        }
-
-        const totalWidth = units.reduce((sum, unit) => sum + unit.width, 0) + Math.max(0, units.length - 1) * unitGap;
-        let cursor = -totalWidth / 2;
-        const y = margin + generations.indexOf(generation) * yGap;
-        for (const unit of units) {
-          const start = cursor;
-          unit.center = start + unit.width / 2;
-          unit.y = y;
-          unit.people.forEach((unitPerson, index) => {
-            positions.set(unitPerson.id, { x: start + box.w / 2 + index * (box.w + coupleGap), y });
-          });
-          cursor += unit.width + unitGap;
-        }
-        unitsByGeneration.set(generation, units);
-      }
-
-      const rawBounds = getBounds([...positions.values()], box);
-      const contentWidth = rawBounds.maxX - rawBounds.minX;
-      const contentHeight = rawBounds.maxY - rawBounds.minY;
-      const scale = Math.min((width - margin * 2) / contentWidth, (height - margin * 2) / contentHeight, 1.35);
-      const offsetX = width / 2 - ((rawBounds.minX + rawBounds.maxX) / 2) * scale;
-      const offsetY = height / 2 - ((rawBounds.minY + rawBounds.maxY) / 2) * scale;
-      const scaled = new Map();
-      for (const [id, pos] of positions) {
-        scaled.set(id, { x: pos.x * scale + offsetX, y: pos.y * scale + offsetY });
-      }
-      const scaledBox = { w: box.w * scale, h: box.h * scale };
-      for (const person of sorted) {
-        if (!person.position) continue;
-        scaled.set(person.id, {
-          x: clamp(person.position.x * width, scaledBox.w / 2 + 12, width - scaledBox.w / 2 - 12),
-          y: clamp(person.position.y * height, scaledBox.h / 2 + 12, height - scaledBox.h / 2 - 12)
-        });
-      }
-
-      return { people: sorted, personMap, positions: scaled, generations, box: scaledBox, scale, unitsByGeneration };
-    }
-
-    function getBounds(points, box) {
-      if (!points.length) return { minX: 0, maxX: 1, minY: 0, maxY: 1 };
-      return points.reduce((bounds, pos) => ({
-        minX: Math.min(bounds.minX, pos.x - box.w / 2),
-        maxX: Math.max(bounds.maxX, pos.x + box.w / 2),
-        minY: Math.min(bounds.minY, pos.y - box.h / 2),
-        maxY: Math.max(bounds.maxY, pos.y + box.h / 2)
-      }), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
-    }
-
-    function drawFamilyTree(targetCanvas, sourcePeople) {
-      const ctx = targetCanvas.getContext("2d");
-      const width = targetCanvas.width;
-      const height = targetCanvas.height;
-      const layout = buildLayout(sourcePeople, width, height);
-      lastLayout = layout;
-      ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, width, height);
-
-      drawGenerationBands(ctx, layout, width);
-      drawParentLines(ctx, layout);
-      drawMarriageLines(ctx, layout);
-      for (const person of layout.people) {
-        drawPerson(ctx, person, layout.positions.get(person.id), layout.box);
-      }
-    }
-
-    function drawGenerationBands(ctx, layout, width) {
-      ctx.save();
-      ctx.font = `${Math.max(11, 13 * layout.scale)}px Roboto, "Noto Sans JP", system-ui, sans-serif`;
-      ctx.fillStyle = "#6f7976";
-      ctx.strokeStyle = "#e3e9e7";
-      ctx.lineWidth = Math.max(1, layout.scale);
-      for (const generation of layout.generations) {
-        const first = layout.people.find((person) => person.generation === generation);
-        const y = first ? layout.positions.get(first.id).y : 0;
-        ctx.beginPath();
-        ctx.moveTo(36, y);
-        ctx.lineTo(width - 36, y);
-        ctx.stroke();
-        ctx.fillText(`第${generation}世代`, 42, y - layout.box.h / 2 - 12);
-      }
-      ctx.restore();
-    }
-
-    function drawMarriageLines(ctx, layout) {
-      const drawn = new Set();
-      ctx.save();
-      ctx.lineWidth = Math.max(2, 2.5 * layout.scale);
-      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--marriage").trim();
-      for (const person of layout.people) {
-        for (const spouseId of person.spouseIds) {
-          const pairKey = [person.id, spouseId].sort((a, b) => a - b).join(":");
-          if (drawn.has(pairKey)) continue;
-          const spouse = layout.personMap.get(spouseId);
-          const a = layout.positions.get(person.id);
-          const b = layout.positions.get(spouseId);
-          if (!spouse || !a || !b || spouse.generation !== person.generation) continue;
-          const left = a.x < b.x ? a : b;
-          const right = a.x < b.x ? b : a;
-          const relationshipType = person.spouseRelationshipTypes[String(spouseId)] || person.relationshipType || "married";
-          const lineStyle = getSpouseLineStyle(relationshipType);
-          ctx.setLineDash(lineStyle.dash.map((value) => value * layout.scale));
-          ctx.strokeStyle = lineStyle.color;
-          ctx.beginPath();
-          ctx.moveTo(left.x + layout.box.w / 2, left.y);
-          ctx.lineTo(right.x - layout.box.w / 2, right.y);
-          ctx.stroke();
-          drawn.add(pairKey);
-        }
-      }
-      ctx.restore();
-    }
-
-    function getSpouseLineStyle(relationshipType) {
-      if (relationshipType === "divorced") return { color: "#ba1a1a", dash: [8, 6] };
-      if (relationshipType === "widowed") return { color: "#6f7976", dash: [2, 5] };
-      return { color: getComputedStyle(document.documentElement).getPropertyValue("--marriage").trim(), dash: [] };
-    }
-
-    function drawParentLines(ctx, layout) {
-      const groups = new Map();
-      for (const child of layout.people) {
-        if (!child.parentIds.length) continue;
-        const parentIds = child.parentIds.slice().sort((a, b) => a - b);
-        const parentTypes = parentIds.map((parentId) => child.parentRelationshipTypes[String(parentId)] || "biological");
-        const key = `${parentIds.join(",")}|${parentTypes.join(",")}`;
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(child);
-      }
-
-      ctx.save();
-      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--child").trim();
-      ctx.lineWidth = Math.max(1.4, 2 * layout.scale);
-      ctx.lineJoin = "round";
-      ctx.lineCap = "round";
-      for (const [groupKey, children] of groups) {
-        const [parentKey, typeKey] = groupKey.split("|");
-        const parentIds = parentKey.split(",").map(Number);
-        const parentTypes = typeKey.split(",");
-        const parentPositions = parentIds.map((id) => layout.positions.get(id)).filter(Boolean);
-        const childPositions = children.map((child) => layout.positions.get(child.id)).filter(Boolean);
-        if (!parentPositions.length || !childPositions.length) continue;
-        const parentBottomY = Math.max(...parentPositions.map((pos) => pos.y + layout.box.h / 2));
-        const childTopY = Math.min(...childPositions.map((pos) => pos.y - layout.box.h / 2));
-        const verticalGap = Math.max(12 * layout.scale, childTopY - parentBottomY);
-        const busY = parentBottomY + verticalGap * 0.48;
-        const parentXs = parentPositions.map((pos) => pos.x);
-        const childXs = childPositions.map((pos) => pos.x);
-        const minBusX = Math.min(...parentXs, ...childXs);
-        const maxBusX = Math.max(...parentXs, ...childXs);
-
-        const lineStyle = getParentLineStyle(parentTypes);
-        ctx.strokeStyle = lineStyle.color;
-        ctx.setLineDash(lineStyle.dash.map((value) => value * layout.scale));
-        ctx.beginPath();
-        for (const parentPos of parentPositions) {
-          ctx.moveTo(parentPos.x, parentPos.y + layout.box.h / 2);
-          ctx.lineTo(parentPos.x, busY);
-        }
-        ctx.moveTo(minBusX, busY);
-        ctx.lineTo(maxBusX, busY);
-        for (const childPos of childPositions) {
-          ctx.moveTo(childPos.x, busY);
-          ctx.lineTo(childPos.x, childPos.y - layout.box.h / 2);
-        }
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    function getParentLineStyle(parentTypes) {
-      if (parentTypes.includes("adopted")) return { color: "#8a5a2b", dash: [7, 5] };
-      if (parentTypes.includes("step")) return { color: "#46617a", dash: [2, 5] };
-      if (parentTypes.includes("unknown")) return { color: "#6f7976", dash: [5, 4] };
-      return { color: getComputedStyle(document.documentElement).getPropertyValue("--child").trim(), dash: [] };
-    }
-
-    function drawPerson(ctx, person, pos, box) {
-      if (!pos) return;
-      const x = pos.x - box.w / 2;
-      const y = pos.y - box.h / 2;
-      const radius = Math.min(18, 14 * Math.max(0.7, box.w / 156));
-
-      ctx.save();
-      roundedRect(ctx, x, y, box.w, box.h, radius);
-      ctx.fillStyle = "#f2f9f7";
-      ctx.fill();
-      ctx.strokeStyle = "#a8c5c0";
-      ctx.lineWidth = Math.max(1, 1.2 * box.w / 156);
-      ctx.stroke();
-
-      ctx.fillStyle = "#171d1b";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      const nameSize = Math.max(9, 15 * box.w / 156);
-      const relationSize = Math.max(8, 10 * box.w / 156);
-      const yearsSize = Math.max(8, 11 * box.w / 156);
-      ctx.font = `700 ${nameSize}px Roboto, "Noto Sans JP", system-ui, "Yu Gothic", sans-serif`;
-      fitText(ctx, person.name, pos.x, person.relation ? pos.y - relationSize * 1.7 : pos.y - yearsSize * 0.55, box.w - 16);
-      if (person.relation) {
-        ctx.font = `600 ${relationSize}px Roboto, "Noto Sans JP", system-ui, "Yu Gothic", sans-serif`;
-        ctx.fillStyle = "#006a63";
-        fitText(ctx, person.relation, pos.x, pos.y, box.w - 18);
-      }
-      ctx.font = `${yearsSize}px Roboto, "Noto Sans JP", system-ui, "Yu Gothic", sans-serif`;
-      ctx.fillStyle = "#3f4947";
-      fitText(ctx, person.years || `ID ${person.id}`, pos.x, pos.y + (person.relation ? relationSize * 1.7 : yearsSize * 1.05), box.w - 18);
-      ctx.restore();
-    }
-
-    function roundedRect(ctx, x, y, width, height, radius) {
-      ctx.beginPath();
-      ctx.moveTo(x + radius, y);
-      ctx.lineTo(x + width - radius, y);
-      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-      ctx.lineTo(x + width, y + height - radius);
-      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-      ctx.lineTo(x + radius, y + height);
-      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-      ctx.lineTo(x, y + radius);
-      ctx.quadraticCurveTo(x, y, x + radius, y);
-      ctx.closePath();
-    }
-
-    function fitText(ctx, text, x, y, maxWidth) {
-      if (ctx.measureText(text).width <= maxWidth) {
-        ctx.fillText(text, x, y);
-        return;
-      }
-      let clipped = text;
-      while (clipped.length > 1 && ctx.measureText(`${clipped}…`).width > maxWidth) {
-        clipped = clipped.slice(0, -1);
-      }
-      ctx.fillText(`${clipped}…`, x, y);
     }
 
     function applyJson() {

@@ -1,0 +1,11 @@
+{
+  "name": "familytree-nosuke",
+  "version": "1.0.0",
+  "private": true,
+  "description": "家系図作成アプリ（単一HTMLで配布、ソースは src/ に分割）",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test \"tests/unit/*.test.js\" && node build.mjs --check && bash tests/smoke.sh && bash tests/browser.sh"
+  }
+}

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>家系図作成アプリ</title>
+  <style>
+{{styles}}
+  </style>
+  <style id="printPaperStyle"></style>
+</head>
+<body>
+{{icons}}
+
+  <main class="app">
+    <aside class="sidebar">
+      <div class="app-title">
+        <span class="app-icon"><svg class="icon" aria-hidden="true"><use href="#ic-tree"/></svg></span>
+        <div>
+          <h1>家系図作成アプリ</h1>
+          <p class="app-subtitle">Family tree composer</p>
+        </div>
+      </div>
+
+      <section class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#ic-person"/></svg>
+          <h2>人物を編集</h2>
+        </div>
+        <form id="personForm">
+          <div class="grid-2">
+            <label>
+              ID
+              <input id="personId" type="number" min="1" required>
+            </label>
+            <label>
+              世代
+              <input id="generation" type="number" min="0" max="12" required>
+            </label>
+          </div>
+          <label>
+            氏名
+            <input id="name" type="text" required>
+          </label>
+          <label>
+            続柄
+            <div class="inline-field">
+              <input id="relation" type="text" list="relationSuggestions" placeholder="例: 長男、母、配偶者">
+              <button type="button" class="secondary" id="suggestRelationBtn"><svg class="icon" aria-hidden="true"><use href="#ic-bulb"/></svg><span class="btn-label">候補</span></button>
+            </div>
+            <datalist id="relationSuggestions">
+              <option value="本人"></option>
+              <option value="父"></option>
+              <option value="母"></option>
+              <option value="祖父"></option>
+              <option value="祖母"></option>
+              <option value="長男"></option>
+              <option value="長女"></option>
+              <option value="次男"></option>
+              <option value="次女"></option>
+              <option value="養子"></option>
+              <option value="配偶者"></option>
+            </datalist>
+          </label>
+          <label>
+            生没年
+            <input id="years" type="text" placeholder="1930-2005">
+          </label>
+          <div class="grid-2">
+            <label>
+              配偶者ID（複数可）
+              <input id="spouseId" type="text" inputmode="numeric" placeholder="例: 2,5">
+            </label>
+            <label>
+              関係種別
+              <select id="relationshipType">
+                <option value="married">結婚</option>
+                <option value="divorced">離婚</option>
+                <option value="widowed">死別</option>
+                <option value="partner">パートナー</option>
+                <option value="mixed">関係ごとに保持</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            親ID
+            <input id="parentIds" type="text" placeholder="例: 1,2">
+          </label>
+          <label>
+            親子関係
+            <select id="parentRelationshipType">
+              <option value="biological">実親</option>
+              <option value="adopted">養親</option>
+              <option value="step">継親</option>
+              <option value="unknown">不明</option>
+              <option value="mixed">親ごとに保持</option>
+            </select>
+          </label>
+          <div class="actions">
+            <button type="submit" id="saveBtn"><svg class="icon" aria-hidden="true"><use href="#ic-check"/></svg><span class="btn-label">保存</span></button>
+            <button type="button" class="secondary" id="newBtn"><svg class="icon" aria-hidden="true"><use href="#ic-add"/></svg><span class="btn-label">新規</span></button>
+            <button type="button" class="danger" id="deleteBtn"><svg class="icon" aria-hidden="true"><use href="#ic-delete"/></svg><span class="btn-label">削除</span></button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#ic-people"/></svg>
+          <h2>人物一覧</h2>
+        </div>
+        <div class="people-list" id="peopleList"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <svg class="icon" aria-hidden="true"><use href="#ic-code"/></svg>
+          <h2>JSON</h2>
+        </div>
+        <label>
+          データ
+          <textarea id="jsonEditor" spellcheck="false"></textarea>
+        </label>
+        <div class="actions">
+          <button type="button" class="secondary" id="applyJsonBtn"><svg class="icon" aria-hidden="true"><use href="#ic-check"/></svg><span class="btn-label">JSON反映</span></button>
+          <button type="button" class="secondary" id="exportJsonBtn"><svg class="icon" aria-hidden="true"><use href="#ic-download"/></svg><span class="btn-label">JSON書き出し</span></button>
+          <button type="button" class="secondary" id="importJsonBtn"><svg class="icon" aria-hidden="true"><use href="#ic-upload"/></svg><span class="btn-label">JSON読込</span></button>
+          <button type="button" class="secondary" id="sampleBtn"><svg class="icon" aria-hidden="true"><use href="#ic-sparkle"/></svg><span class="btn-label">サンプル復元</span></button>
+          <input id="jsonFileInput" type="file" accept="application/json,.json" hidden>
+        </div>
+        <div class="download-box" id="jsonDownloadBox">
+          <a class="download-link" id="jsonDownloadLink" href="#" download><svg class="icon" aria-hidden="true"><use href="#ic-download"/></svg>JSONファイルを保存</a>
+        </div>
+        <div class="backup-box" id="backupBox" hidden>
+          <div class="card-head">
+            <svg class="icon" aria-hidden="true"><use href="#ic-history"/></svg>
+            <h2>自動バックアップ</h2>
+          </div>
+          <div class="backup-list" id="backupList"></div>
+        </div>
+      </section>
+
+      <div class="snackbar" id="snackbar" hidden>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+        <button type="button" class="snackbar-action" id="undoBtn" hidden>元に戻す</button>
+      </div>
+    </aside>
+
+    <section class="workspace">
+      <div class="toolbar">
+        <strong id="summary" class="chip">0人</strong>
+        <span class="status chip chip-outline" id="layoutSummary"></span>
+        <span class="spacer"></span>
+        <label class="toolbar-size">
+          用紙サイズ
+          <select id="paperSize">
+            <option value="a3">A3横</option>
+            <option value="a4">A4横</option>
+          </select>
+        </label>
+        <button type="button" class="secondary" id="fitBtn"><svg class="icon" aria-hidden="true"><use href="#ic-refresh"/></svg><span class="btn-label">再描画</span></button>
+        <button type="button" class="secondary" id="manualLayoutBtn" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#ic-move"/></svg><span class="btn-label">配置調整</span></button>
+        <button type="button" class="secondary" id="resetLayoutBtn"><svg class="icon" aria-hidden="true"><use href="#ic-restore"/></svg><span class="btn-label">自動配置に戻す</span></button>
+        <button type="button" id="printBtn"><svg class="icon" aria-hidden="true"><use href="#ic-print"/></svg><span class="btn-label">印刷</span></button>
+      </div>
+      <div class="canvas-wrap">
+        <div class="paper">
+          <canvas id="treeCanvas" aria-label="家系図プレビュー"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="confirmDialog" aria-labelledby="confirmTitle">
+    <form method="dialog">
+      <div class="dialog-head">
+        <svg class="icon" aria-hidden="true"><use href="#ic-warning"/></svg>
+        <h2 class="dialog-title" id="confirmTitle">確認</h2>
+      </div>
+      <p class="dialog-body" id="confirmBody"></p>
+      <div class="dialog-actions">
+        <button type="submit" value="cancel" class="text" id="confirmCancelBtn">キャンセル</button>
+        <button type="submit" value="ok" class="danger" id="confirmOkBtn">削除</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+{{script}}
+  </script>
+</body>
+</html>

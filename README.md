@@ -20,6 +20,50 @@ python -m http.server 8000
 
 その後、ブラウザで `http://localhost:8000/` を開きます。
 
+## ソース構成とビルド
+
+配布物は従来どおり `index.html` 1枚ですが、これは `src/` から生成しています。**`index.html` を直接編集しないでください。**
+
+```
+src/
+  index.template.html  HTMLの骨組み（{{styles}} {{icons}} {{script}} を埋める）
+  styles.css           Material 3のスタイル
+  icons.svg            SVGアイコンのスプライト
+  data.js              人物データの正規化・入力値の解釈・続柄の推定（DOMなし）
+  layout.js            世代ごとの自動配置（DOMなし）
+  draw.js              Canvas描画（DOMなし、配色は引数で受け取る）
+  app.js               DOM・localStorage・イベント配線
+build.mjs              src/ から index.html を生成する（依存パッケージなし）
+```
+
+```bash
+node build.mjs           # index.html を生成する
+node build.mjs --check   # index.html が src/ と一致するか確認する
+```
+
+`build.mjs` は各モジュールから `import` / `export` を取り除いて依存順に連結し、構文を検査してから差し込みます。生成した `index.html` はコミットするので、利用者は今までどおりファイルを開くだけで使えます。
+
+## テスト
+
+```bash
+npm test
+```
+
+次の4つを順に実行します。
+
+1. `node --test "tests/unit/*.test.js"` — `data.js` / `layout.js` / `draw.js` のユニットテスト（45件）
+2. `node build.mjs --check` — `index.html` が `src/` から作り直した結果と一致するか
+3. `bash tests/smoke.sh` — 静的配信と必須UIの存在確認
+4. `bash tests/browser.sh` — ヘッドレスChromiumでの実操作（46件）
+
+`draw.js` のテストはCanvasの代わりに呼び出しを記録するスタブを使います。`document` や `window` に触れているとNodeで例外になるため、描画ロジックがDOMから切り離されていることもここで担保しています。
+
+### テストの補足
+
+- `tests/smoke.sh` はNode.jsもChromiumも使わず、静的配信と必須UIの存在だけを確認します（`python3` のみ必要）。
+- `tests/browser.sh` はChromiumが見つからない場合スキップします。使うバイナリは `CHROME=/path/to/chrome bash tests/browser.sh` で指定できます。検証内容は `tests/ui-checks.js`（通常操作）と `tests/storage-checks.js`（保存できない環境）にあります。
+- 見た目の最終確認は、Chromeなどで `index.html` か `http://127.0.0.1:8000/` を開いて行います。
+
 ## データを失わないための仕組み
 
 家族など複数人で使うことを想定し、誤操作でデータが消えないようにしています。
@@ -29,26 +73,6 @@ python -m http.server 8000
 - **同じIDは上書きしません。** 既に使われているIDで保存しようとすると、そのIDを使っている人物名を示して中断します。編集中の本人を更新する場合だけ上書きします。
 - **自動バックアップを5件保持します。** 保存のたびに `localStorage` の `familytree.backups` へスナップショットを積み、JSON欄の下に日時付きで並べて復元できます。
 - **保存できない環境を検知します。** プライベートモードや容量超過で `localStorage` に書けないとき、起動時と保存時に消えない警告を出します（JSON書き出しでバックアップしてください）。
-
-## WSL2スモークテスト
-
-Node.jsやChromiumを追加インストールしなくても、WSL2から静的配信と必須UIの存在を確認できます。
-
-```bash
-bash tests/smoke.sh
-```
-
-ブラウザ操作やCanvasの見た目は、Chromeなどで `http://127.0.0.1:8000/` を開いて確認します。
-
-## ブラウザテスト
-
-ヘッドレスChromiumで実際の操作（保存・削除・元に戻す・バックアップ復元・保存失敗時の警告）を検証します。
-
-```bash
-bash tests/browser.sh
-```
-
-Chromiumが見つからない場合はスキップします。使うバイナリは `CHROME=/path/to/chrome bash tests/browser.sh` で指定できます。検証内容は `tests/ui-checks.js` と `tests/storage-checks.js` にあります。
 
 ## WSL2移行先
 
@@ -135,4 +159,4 @@ Canvasのプレビューをブラウザの印刷対象として表示し、選�
 
 ## 補足
 
-現在は単一ファイルで動く初版です。将来的に編集UIが増える場合は、Canvas描画ロジックとデータ編集を別ファイルへ分けると保守しやすくなります。テストは `tests/smoke.sh` から段階的に拡張できます。
+配布は単一ファイルのまま、ソースは `src/` に分割しています。描画（`draw.js`）・配置（`layout.js`）・データ（`data.js`）はDOMから切り離してあるため、ユニットテストから直接呼び出せます。
