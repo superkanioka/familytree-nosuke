@@ -1,0 +1,1307 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>家系図作成アプリ</title>
+  <style>
+    :root {
+      --bg: #f7f7f4;
+      --panel: #ffffff;
+      --ink: #252525;
+      --muted: #6f716f;
+      --line: #d8d6ce;
+      --accent: #246f6b;
+      --accent-dark: #174d4a;
+      --danger: #a43b35;
+      --marriage: #c44b52;
+      --child: #32373a;
+      --shadow: 0 10px 28px rgba(33, 35, 35, 0.08);
+      --paper-ratio: 420 / 297;
+      --paper-width-mm: 420;
+      --paper-height-mm: 297;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      min-height: 38px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      padding: 8px 12px;
+      color: #fff;
+      background: var(--accent);
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      background: var(--accent-dark);
+    }
+
+    button.secondary {
+      color: var(--ink);
+      background: #f3f3ef;
+      border-color: var(--line);
+    }
+
+    button.secondary:hover {
+      background: #e9e8e2;
+    }
+
+    button.danger {
+      background: var(--danger);
+    }
+
+    button.danger:hover {
+      background: #7e2c28;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(320px, 400px) 1fr;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      padding: 18px;
+      overflow: auto;
+    }
+
+    .workspace {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(10px);
+    }
+
+    .toolbar .spacer {
+      flex: 1 1 auto;
+    }
+
+    .toolbar-size {
+      display: grid;
+      grid-template-columns: auto 92px;
+      align-items: center;
+      gap: 6px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .toolbar-size select {
+      min-height: 34px;
+      padding: 6px 8px;
+    }
+
+    .canvas-wrap {
+      min-width: 0;
+      overflow: auto;
+      padding: 20px;
+    }
+
+    .paper {
+      width: min(100%, 1200px);
+      aspect-ratio: var(--paper-ratio);
+      margin: 0 auto;
+      background: #fff;
+      box-shadow: var(--shadow);
+      border: 1px solid #e6e3da;
+    }
+
+    .paper.is-manual canvas {
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .paper.is-manual canvas:active {
+      cursor: grabbing;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    h1 {
+      font-size: 20px;
+      line-height: 1.25;
+      margin: 0 0 16px;
+    }
+
+    h2 {
+      font-size: 15px;
+      margin: 22px 0 10px;
+    }
+
+    label {
+      display: grid;
+      gap: 5px;
+      margin: 10px 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      min-height: 36px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    textarea {
+      min-height: 118px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .inline-field {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      min-height: 18px;
+    }
+
+    .people-list {
+      display: grid;
+      gap: 8px;
+      max-height: 310px;
+      overflow: auto;
+      padding-right: 3px;
+    }
+
+    .person-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px;
+      background: #fbfbf8;
+    }
+
+    .person-title {
+      font-size: 13px;
+      font-weight: 750;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .person-meta {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .person-row button {
+      min-height: 30px;
+      padding: 5px 8px;
+      font-size: 12px;
+    }
+
+    .download-box {
+      display: none;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+
+    .download-box.is-visible {
+      display: block;
+    }
+
+    .download-link {
+      display: inline-flex;
+      min-height: 34px;
+      padding: 7px 10px;
+      color: var(--ink);
+      background: #f3f3ef;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      align-items: center;
+      text-decoration: none;
+    }
+
+    .print-only {
+      display: none;
+    }
+
+    @media (max-width: 920px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+    }
+
+    @media print {
+      @page {
+        margin: 0;
+      }
+
+      body {
+        background: #fff;
+      }
+
+      .sidebar,
+      .toolbar {
+        display: none;
+      }
+
+      .app,
+      .workspace {
+        display: block;
+        min-height: auto;
+      }
+
+      .canvas-wrap {
+        padding: 0;
+        overflow: visible;
+      }
+
+      .paper {
+        width: var(--paper-width-mm)mm;
+        height: var(--paper-height-mm)mm;
+        aspect-ratio: auto;
+        box-shadow: none;
+        border: 0;
+      }
+    }
+  </style>
+  <style id="printPaperStyle"></style>
+</head>
+<body>
+  <main class="app">
+    <aside class="sidebar">
+      <h1>家系図作成アプリ</h1>
+      <form id="personForm">
+        <div class="grid-2">
+          <label>
+            ID
+            <input id="personId" type="number" min="1" required>
+          </label>
+          <label>
+            世代
+            <input id="generation" type="number" min="0" max="12" required>
+          </label>
+        </div>
+        <label>
+          氏名
+          <input id="name" type="text" required>
+        </label>
+        <label>
+          続柄
+          <div class="inline-field">
+            <input id="relation" type="text" list="relationSuggestions" placeholder="例: 長男、母、配偶者">
+            <button type="button" class="secondary" id="suggestRelationBtn">候補</button>
+          </div>
+          <datalist id="relationSuggestions">
+            <option value="本人"></option>
+            <option value="父"></option>
+            <option value="母"></option>
+            <option value="祖父"></option>
+            <option value="祖母"></option>
+            <option value="長男"></option>
+            <option value="長女"></option>
+            <option value="次男"></option>
+            <option value="次女"></option>
+            <option value="養子"></option>
+            <option value="配偶者"></option>
+          </datalist>
+        </label>
+        <label>
+          生没年
+          <input id="years" type="text" placeholder="1930-2005">
+        </label>
+        <div class="grid-2">
+          <label>
+            配偶者ID（複数可）
+            <input id="spouseId" type="text" inputmode="numeric" placeholder="例: 2,5">
+          </label>
+          <label>
+            関係種別
+            <select id="relationshipType">
+              <option value="married">結婚</option>
+              <option value="divorced">離婚</option>
+              <option value="widowed">死別</option>
+              <option value="partner">パートナー</option>
+              <option value="mixed">関係ごとに保持</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          親ID
+          <input id="parentIds" type="text" placeholder="例: 1,2">
+        </label>
+        <label>
+          親子関係
+          <select id="parentRelationshipType">
+            <option value="biological">実親</option>
+            <option value="adopted">養親</option>
+            <option value="step">継親</option>
+            <option value="unknown">不明</option>
+            <option value="mixed">親ごとに保持</option>
+          </select>
+        </label>
+        <div class="actions">
+          <button type="submit" id="saveBtn">保存</button>
+          <button type="button" class="secondary" id="newBtn">新規</button>
+          <button type="button" class="danger" id="deleteBtn">削除</button>
+        </div>
+      </form>
+
+      <h2>人物一覧</h2>
+      <div class="people-list" id="peopleList"></div>
+
+      <h2>JSON</h2>
+      <textarea id="jsonEditor" spellcheck="false"></textarea>
+      <div class="actions">
+        <button type="button" class="secondary" id="applyJsonBtn">JSON反映</button>
+        <button type="button" class="secondary" id="exportJsonBtn">JSON書き出し</button>
+        <button type="button" class="secondary" id="importJsonBtn">JSON読込</button>
+        <button type="button" class="secondary" id="sampleBtn">サンプル復元</button>
+        <input id="jsonFileInput" type="file" accept="application/json,.json" hidden>
+      </div>
+      <div class="download-box" id="jsonDownloadBox">
+        <a class="download-link" id="jsonDownloadLink" href="#" download>JSONファイルを保存</a>
+      </div>
+      <p class="status" id="status"></p>
+    </aside>
+
+    <section class="workspace">
+      <div class="toolbar">
+        <strong id="summary">0人</strong>
+        <span class="status" id="layoutSummary"></span>
+        <span class="spacer"></span>
+        <label class="toolbar-size">
+          用紙サイズ
+          <select id="paperSize">
+            <option value="a3">A3横</option>
+            <option value="a4">A4横</option>
+          </select>
+        </label>
+        <button type="button" class="secondary" id="fitBtn">再描画</button>
+        <button type="button" class="secondary" id="manualLayoutBtn">配置調整</button>
+        <button type="button" class="secondary" id="resetLayoutBtn">自動配置に戻す</button>
+        <button type="button" class="secondary" id="printBtn">印刷</button>
+      </div>
+      <div class="canvas-wrap">
+        <div class="paper">
+          <canvas id="treeCanvas" aria-label="家系図プレビュー"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const PAPER_SIZES = {
+      a3: { key: "a3", label: "A3", widthMm: 420, heightMm: 297, ratio: 420 / 297 },
+      a4: { key: "a4", label: "A4", widthMm: 297, heightMm: 210, ratio: 297 / 210 }
+    };
+    const DEFAULT_PAPER_SIZE = "a3";
+    const samplePeople = [
+      { id: 1, name: "野介 宗一郎", years: "1888-1962", generation: 0, spouseId: 2, parentIds: [], relationshipType: "married" },
+      { id: 2, name: "野介 ハナ", years: "1892-1970", generation: 0, spouseId: 1, parentIds: [], relationshipType: "married" },
+      { id: 3, name: "野介 清", years: "1915-1988", generation: 1, spouseId: 4, parentIds: [1, 2], relationshipType: "married" },
+      { id: 4, name: "野介 文子", years: "1918-1997", generation: 1, spouseId: 3, parentIds: [], relationshipType: "married" },
+      { id: 5, name: "野介 勇", years: "1920-2001", generation: 1, spouseId: 6, parentIds: [1, 2], relationshipType: "married" },
+      { id: 6, name: "野介 玲子", years: "1925-2010", generation: 1, spouseId: 5, parentIds: [], relationshipType: "married" },
+      { id: 7, name: "野介 正", years: "1942-", generation: 2, spouseId: 8, parentIds: [3, 4], relationshipType: "married" },
+      { id: 8, name: "野介 恵", years: "1945-", generation: 2, spouseId: 7, parentIds: [], relationshipType: "married" },
+      { id: 9, name: "野介 和子", years: "1948-", generation: 2, spouseId: 10, parentIds: [3, 4], relationshipType: "married" },
+      { id: 10, name: "田中 進", years: "1946-", generation: 2, spouseId: 9, parentIds: [], relationshipType: "married" },
+      { id: 11, name: "野介 隆", years: "1950-", generation: 2, spouseId: 12, parentIds: [5, 6], relationshipType: "married" },
+      { id: 12, name: "野介 由美", years: "1952-", generation: 2, spouseId: 11, parentIds: [], relationshipType: "married" },
+      { id: 13, name: "野介 健太", years: "1975-", generation: 3, spouseId: 14, parentIds: [7, 8], relationshipType: "married" },
+      { id: 14, name: "野介 真理", years: "1978-", generation: 3, spouseId: 13, parentIds: [], relationshipType: "married" },
+      { id: 15, name: "田中 彩", years: "1977-", generation: 3, spouseId: 16, parentIds: [9, 10], relationshipType: "married" },
+      { id: 16, name: "佐藤 悠", years: "1974-", generation: 3, spouseId: 15, parentIds: [], relationshipType: "married" },
+      { id: 17, name: "野介 葵", years: "2004-", generation: 4, spouseId: null, parentIds: [13, 14], relationshipType: "married" },
+      { id: 18, name: "野介 蓮", years: "2008-", generation: 4, spouseId: null, parentIds: [13, 14], relationshipType: "married" },
+      { id: 19, name: "佐藤 凛", years: "2006-", generation: 4, spouseId: null, parentIds: [15, 16], relationshipType: "married" }
+    ];
+    const sampleRelationLabels = {
+      1: "高祖父", 2: "高祖母", 3: "祖父", 4: "祖母", 5: "大叔父", 6: "大叔母",
+      7: "父", 8: "母", 9: "叔母", 10: "叔父", 11: "叔父", 12: "叔母",
+      13: "本人", 14: "配偶者", 15: "いとこ", 16: "いとこの配偶者",
+      17: "長女", 18: "長男", 19: "子"
+    };
+    for (const person of samplePeople) person.relation = sampleRelationLabels[person.id] || "";
+
+    let people = loadPeople();
+    let paperSize = loadPaperSize();
+    let selectedId = people[0]?.id ?? 1;
+    let manualLayoutMode = false;
+    let draggedPersonId = null;
+    let dragOffset = { x: 0, y: 0 };
+    let lastLayout = null;
+
+    const form = document.getElementById("personForm");
+    const fields = {
+      id: document.getElementById("personId"),
+      name: document.getElementById("name"),
+      years: document.getElementById("years"),
+      generation: document.getElementById("generation"),
+      spouseId: document.getElementById("spouseId"),
+      relationshipType: document.getElementById("relationshipType"),
+      relation: document.getElementById("relation"),
+      parentIds: document.getElementById("parentIds"),
+      parentRelationshipType: document.getElementById("parentRelationshipType")
+    };
+    const canvas = document.getElementById("treeCanvas");
+    const peopleList = document.getElementById("peopleList");
+    const jsonEditor = document.getElementById("jsonEditor");
+    const status = document.getElementById("status");
+    const summary = document.getElementById("summary");
+    const layoutSummary = document.getElementById("layoutSummary");
+    const paperSizeSelect = document.getElementById("paperSize");
+    const paper = document.querySelector(".paper");
+    const jsonDownloadBox = document.getElementById("jsonDownloadBox");
+    const jsonDownloadLink = document.getElementById("jsonDownloadLink");
+    const jsonFileInput = document.getElementById("jsonFileInput");
+    let lastJsonUrl = "";
+
+    function getPaperSpec() {
+      return PAPER_SIZES[paperSize] || PAPER_SIZES[DEFAULT_PAPER_SIZE];
+    }
+
+    function loadPaperSize() {
+      try {
+        const saved = localStorage.getItem("familytree.paperSize");
+        return PAPER_SIZES[saved] ? saved : DEFAULT_PAPER_SIZE;
+      } catch {
+        return DEFAULT_PAPER_SIZE;
+      }
+    }
+
+    function savePaperSize() {
+      localStorage.setItem("familytree.paperSize", paperSize);
+    }
+
+    function applyPaperSize() {
+      const spec = getPaperSpec();
+      paperSizeSelect.value = spec.key;
+      paper.style.aspectRatio = `${spec.widthMm} / ${spec.heightMm}`;
+      paper.dataset.paperSize = spec.key;
+      paper.dataset.paperDimensions = `${spec.widthMm}x${spec.heightMm}mm`;
+      document.documentElement.style.setProperty("--paper-ratio", `${spec.widthMm} / ${spec.heightMm}`);
+      document.documentElement.style.setProperty("--paper-width-mm", spec.widthMm);
+      document.documentElement.style.setProperty("--paper-height-mm", spec.heightMm);
+      const printStyle = document.getElementById("printPaperStyle");
+      printStyle.textContent = `@page { size: ${spec.label} landscape; margin: 0; }`;
+    }
+
+    function loadPeople() {
+      try {
+        const saved = localStorage.getItem("familytree.people");
+        return saved ? normalizePeople(JSON.parse(saved)) : normalizePeople(structuredClone(samplePeople));
+      } catch {
+        return normalizePeople(structuredClone(samplePeople));
+      }
+    }
+
+    function normalizePeople(input) {
+      if (!Array.isArray(input)) return [];
+      return input
+        .map((person) => {
+          const spouseIds = normalizeSpouseIds(person.spouseIds, person.spouseId);
+          return {
+            id: Number(person.id),
+            name: String(person.name ?? "").trim(),
+            relation: String(person.relation ?? person.kinship ?? "").trim(),
+            years: String(person.years ?? "").trim(),
+            generation: Number(person.generation ?? 0),
+            position: normalizePosition(person.position),
+            spouseId: spouseIds[0] ?? null,
+            spouseIds,
+            spouseRelationshipTypes: normalizeSpouseRelationshipTypes(person.spouseRelationshipTypes),
+            parentIds: Array.isArray(person.parentIds) ? person.parentIds.map(Number).filter(Number.isFinite) : [],
+            parentRelationshipTypes: normalizeParentRelationshipTypes(person.parentRelationshipTypes),
+            relationshipType: person.relationshipType || "married",
+            relationshipMeta: person.relationshipMeta || {}
+          };
+        })
+        .filter((person) => Number.isFinite(person.id) && person.id > 0 && person.name)
+        .sort((a, b) => a.generation - b.generation || a.id - b.id);
+    }
+
+    function toNullableNumber(value) {
+      if (value === null || value === undefined || value === "") return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function normalizeParentRelationshipTypes(value) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+      const allowed = new Set(["biological", "adopted", "step", "unknown"]);
+      return Object.fromEntries(Object.entries(value)
+        .map(([parentId, type]) => [String(Number(parentId)), String(type)])
+        .filter(([parentId, type]) => Number(parentId) > 0 && allowed.has(type)));
+    }
+
+    function normalizeSpouseIds(value, legacySpouseId) {
+      const raw = Array.isArray(value) ? value : value === undefined || value === null ? [legacySpouseId] : String(value).split(",");
+      return [...new Set(raw.map(Number).filter((id) => Number.isFinite(id) && id > 0))];
+    }
+
+    function normalizeSpouseRelationshipTypes(value) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+      const allowed = new Set(["married", "divorced", "widowed", "partner"]);
+      return Object.fromEntries(Object.entries(value)
+        .map(([spouseId, type]) => [String(Number(spouseId)), String(type)])
+        .filter(([spouseId, type]) => Number(spouseId) > 0 && allowed.has(type)));
+    }
+
+    function normalizePosition(value) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+      const x = Number(value.x);
+      const y = Number(value.y);
+      return Number.isFinite(x) && Number.isFinite(y) ? { x: clamp(x, 0, 1), y: clamp(y, 0, 1) } : null;
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function savePeople() {
+      localStorage.setItem("familytree.people", JSON.stringify(people, null, 2));
+    }
+
+    function nextId() {
+      return people.reduce((max, person) => Math.max(max, person.id), 0) + 1;
+    }
+
+    function setStatus(message) {
+      status.textContent = message;
+      window.clearTimeout(setStatus.timer);
+      setStatus.timer = window.setTimeout(() => {
+        status.textContent = "";
+      }, 4000);
+    }
+
+    function parseParentIds(value) {
+      return value
+        .split(",")
+        .map((part) => Number(part.trim()))
+        .filter((id) => Number.isFinite(id) && id > 0)
+        .slice(0, 2);
+    }
+
+    function parseSpouseIds(value) {
+      return normalizeSpouseIds(String(value || "").split(","), null);
+    }
+
+    function buildSpouseRelationshipTypes(value, selectedType, previousTypes = {}) {
+      const spouseIds = parseSpouseIds(value);
+      if (selectedType === "mixed") {
+        return Object.fromEntries(spouseIds.map((spouseId) => [
+          String(spouseId), previousTypes[String(spouseId)] || "married"
+        ]));
+      }
+      return Object.fromEntries(spouseIds.map((spouseId) => [String(spouseId), selectedType]));
+    }
+
+    function buildParentRelationshipTypes(value, selectedType, previousTypes = {}) {
+      const parentIds = parseParentIds(value);
+      if (selectedType === "mixed") {
+        return Object.fromEntries(parentIds.map((parentId) => [
+          String(parentId), previousTypes[String(parentId)] || "biological"
+        ]));
+      }
+      return Object.fromEntries(parentIds.map((parentId) => [String(parentId), selectedType]));
+    }
+
+    function parentKey(parentIds) {
+      return parentIds.slice().sort((a, b) => a - b).join(",");
+    }
+
+    function yearStart(years) {
+      const match = String(years || "").match(/(\d{4})/);
+      return match ? Number(match[1]) : Infinity;
+    }
+
+    function suggestRelation() {
+      const currentId = toNullableNumber(fields.id.value);
+      const parentIds = parseParentIds(fields.parentIds.value);
+      if (parentIds.length) {
+        const key = parentKey(parentIds);
+        const siblings = people
+          .filter((person) => parentKey(person.parentIds) === key)
+          .sort((a, b) => yearStart(a.years) - yearStart(b.years) || a.id - b.id);
+        const currentIndex = siblings.findIndex((person) => person.id === currentId);
+        const order = currentIndex >= 0 ? currentIndex + 1 : siblings.length + 1;
+        fields.relation.value = `第${order}子`;
+        setStatus("親IDから続柄候補を入れました。必要なら自由に修正できます。");
+        return;
+      }
+      if (toNullableNumber(fields.spouseId.value)) {
+        fields.relation.value = "配偶者";
+        setStatus("配偶者の続柄候補を入れました。");
+        return;
+      }
+      fields.relation.value = Number(fields.generation.value) === 0 ? "先祖" : "本人";
+      setStatus("続柄候補を入れました。必要なら自由に修正できます。");
+    }
+
+    function selectPerson(id) {
+      selectedId = id;
+      const person = people.find((item) => item.id === id);
+      if (!person) {
+        fields.id.value = nextId();
+        fields.name.value = "";
+        fields.relation.value = "";
+        fields.years.value = "";
+        fields.generation.value = 0;
+        fields.spouseId.value = "";
+        fields.relationshipType.value = "married";
+        fields.parentIds.value = "";
+        fields.parentRelationshipType.value = "biological";
+        return;
+      }
+      fields.id.value = person.id;
+      fields.name.value = person.name;
+      fields.relation.value = person.relation;
+      fields.years.value = person.years;
+      fields.generation.value = person.generation;
+      fields.spouseId.value = person.spouseIds.join(",");
+      const spouseTypes = person.spouseIds.map((spouseId) => person.spouseRelationshipTypes[String(spouseId)] || person.relationshipType || "married");
+      fields.relationshipType.value = spouseTypes.length && spouseTypes.every((type) => type === spouseTypes[0]) ? spouseTypes[0] : "mixed";
+      fields.parentIds.value = person.parentIds.join(",");
+      const parentTypes = person.parentIds.map((parentId) => person.parentRelationshipTypes[String(parentId)] || "biological");
+      fields.parentRelationshipType.value = parentTypes.length && parentTypes.every((type) => type === parentTypes[0]) ? parentTypes[0] : "mixed";
+    }
+
+    function upsertPerson(event) {
+      event.preventDefault();
+      const previousPerson = people.find((item) => item.id === Number(fields.id.value));
+      const spouseIds = parseSpouseIds(fields.spouseId.value);
+      const person = {
+        id: Number(fields.id.value),
+        name: fields.name.value.trim(),
+        relation: fields.relation.value.trim(),
+        years: fields.years.value.trim(),
+        generation: Number(fields.generation.value),
+        position: previousPerson?.position || null,
+        spouseId: spouseIds[0] ?? null,
+        spouseIds,
+        spouseRelationshipTypes: buildSpouseRelationshipTypes(fields.spouseId.value, fields.relationshipType.value, previousPerson?.spouseRelationshipTypes),
+        parentIds: parseParentIds(fields.parentIds.value),
+        parentRelationshipTypes: buildParentRelationshipTypes(fields.parentIds.value, fields.parentRelationshipType.value, previousPerson?.parentRelationshipTypes),
+        relationshipType: fields.relationshipType.value,
+        relationshipMeta: previousPerson?.relationshipMeta || {}
+      };
+
+      if (!person.id || !person.name || !Number.isFinite(person.generation)) {
+        setStatus("ID、氏名、世代を確認してください。");
+        return;
+      }
+      if (person.spouseIds.includes(person.id)) {
+        setStatus("配偶者IDに自分自身は指定できません。");
+        return;
+      }
+      if (person.parentIds.includes(person.id)) {
+        setStatus("親IDに自分自身は指定できません。");
+        return;
+      }
+
+      const sameIdIndex = people.findIndex((item) => item.id === person.id);
+      const duplicate = sameIdIndex === -1 && people.some((item) => item.id === person.id);
+      if (duplicate) {
+        setStatus("同じIDの人物がいます。");
+        return;
+      }
+
+      if (sameIdIndex >= 0) {
+        people[sameIdIndex] = person;
+      } else {
+        people.push(person);
+      }
+
+      clearPreviousSpouseLinks(previousPerson, person);
+      syncSpouseLinks(person);
+      people = normalizePeople(people);
+      selectedId = person.id;
+      persistAndRender("保存しました。");
+    }
+
+    function clearPreviousSpouseLinks(previousPerson, currentPerson) {
+      if (!previousPerson) return;
+      const currentSpouseIds = new Set(currentPerson.spouseIds);
+      for (const previousSpouseId of previousPerson.spouseIds) {
+        if (currentSpouseIds.has(previousSpouseId)) continue;
+        const previousSpouse = people.find((item) => item.id === previousSpouseId);
+        if (!previousSpouse) continue;
+        previousSpouse.spouseIds = previousSpouse.spouseIds.filter((spouseId) => spouseId !== currentPerson.id);
+        previousSpouse.spouseId = previousSpouse.spouseIds[0] ?? null;
+        delete previousSpouse.spouseRelationshipTypes[String(currentPerson.id)];
+      }
+    }
+
+    function syncSpouseLinks(person) {
+      for (const spouseId of person.spouseIds) {
+        const spouse = people.find((item) => item.id === spouseId);
+        if (!spouse) continue;
+        if (!spouse.spouseIds.includes(person.id)) spouse.spouseIds.push(person.id);
+        spouse.spouseId = spouse.spouseIds[0] ?? null;
+        spouse.spouseRelationshipTypes[String(person.id)] = person.spouseRelationshipTypes[String(spouseId)] || person.relationshipType || "married";
+      }
+    }
+
+    function deleteSelected() {
+      const id = Number(fields.id.value);
+      if (!id) return;
+      people = people
+        .filter((person) => person.id !== id)
+        .map((person) => ({
+          ...person,
+          spouseIds: person.spouseIds.filter((spouseId) => spouseId !== id),
+          spouseId: person.spouseIds.filter((spouseId) => spouseId !== id)[0] ?? null,
+          spouseRelationshipTypes: Object.fromEntries(Object.entries(person.spouseRelationshipTypes).filter(([spouseId]) => Number(spouseId) !== id)),
+          parentIds: person.parentIds.filter((parentId) => parentId !== id),
+          parentRelationshipTypes: Object.fromEntries(Object.entries(person.parentRelationshipTypes).filter(([parentId]) => Number(parentId) !== id))
+        }));
+      selectedId = people[0]?.id ?? nextId();
+      persistAndRender("削除しました。");
+    }
+
+    function persistAndRender(message) {
+      savePeople();
+      renderAll();
+      setStatus(message);
+    }
+
+    function renderAll() {
+      selectPerson(selectedId);
+      renderPeopleList();
+      jsonEditor.value = JSON.stringify(people, null, 2);
+      summary.textContent = `${people.length}人`;
+      const generations = [...new Set(people.map((person) => person.generation))].sort((a, b) => a - b);
+      const spec = getPaperSpec();
+      layoutSummary.textContent = generations.length ? `${generations[0]}〜${generations.at(-1)}世代 / ${spec.label}横` : `${spec.label}横`;
+      applyPaperSize();
+      renderPreview();
+    }
+
+    function renderPeopleList() {
+      peopleList.innerHTML = "";
+      for (const person of people) {
+        const row = document.createElement("div");
+        row.className = "person-row";
+        const text = document.createElement("div");
+        const title = document.createElement("div");
+        title.className = "person-title";
+        title.textContent = `#${person.id} ${person.name}`;
+        const meta = document.createElement("div");
+        meta.className = "person-meta";
+        meta.textContent = `${person.relation ? `続柄:${person.relation} / ` : ""}世代:${person.generation} / 配偶者:${person.spouseIds.join(",") || "-"} / 親:${person.parentIds.join(",") || "-"}`;
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "secondary";
+        edit.textContent = "編集";
+        edit.addEventListener("click", () => {
+          selectedId = person.id;
+          selectPerson(person.id);
+        });
+        text.append(title, meta);
+        row.append(text, edit);
+        peopleList.append(row);
+      }
+    }
+
+    function renderPreview() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const width = Math.max(900, Math.round(rect.width * window.devicePixelRatio));
+      const height = Math.round(width / getPaperSpec().ratio);
+      canvas.width = width;
+      canvas.height = height;
+      drawFamilyTree(canvas, people);
+    }
+
+    function canvasPoint(event) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (event.clientX - rect.left) * (canvas.width / rect.width),
+        y: (event.clientY - rect.top) * (canvas.height / rect.height)
+      };
+    }
+
+    function hitTestPerson(point) {
+      if (!lastLayout) return null;
+      for (let index = lastLayout.people.length - 1; index >= 0; index -= 1) {
+        const person = lastLayout.people[index];
+        const pos = lastLayout.positions.get(person.id);
+        if (!pos) continue;
+        if (Math.abs(point.x - pos.x) <= lastLayout.box.w / 2 && Math.abs(point.y - pos.y) <= lastLayout.box.h / 2) {
+          return { person, pos };
+        }
+      }
+      return null;
+    }
+
+    function toggleManualLayout() {
+      manualLayoutMode = !manualLayoutMode;
+      paper.classList.toggle("is-manual", manualLayoutMode);
+      const button = document.getElementById("manualLayoutBtn");
+      button.textContent = manualLayoutMode ? "配置調整を終了" : "配置調整";
+      button.setAttribute("aria-pressed", String(manualLayoutMode));
+      setStatus(manualLayoutMode ? "人物枠をドラッグして配置を調整できます。" : "配置調整を終了しました。");
+    }
+
+    function resetManualLayout() {
+      people = people.map((person) => ({ ...person, position: null }));
+      persistAndRender("自動配置に戻しました。");
+    }
+
+    function handlePointerDown(event) {
+      if (!manualLayoutMode) return;
+      const hit = hitTestPerson(canvasPoint(event));
+      if (!hit) return;
+      draggedPersonId = hit.person.id;
+      const point = canvasPoint(event);
+      dragOffset = { x: point.x - hit.pos.x, y: point.y - hit.pos.y };
+      canvas.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    }
+
+    function handlePointerMove(event) {
+      if (draggedPersonId === null || !manualLayoutMode) return;
+      const person = people.find((item) => item.id === draggedPersonId);
+      if (!person) return;
+      const point = canvasPoint(event);
+      const x = clamp(point.x - dragOffset.x, lastLayout.box.w / 2 + 12, canvas.width - lastLayout.box.w / 2 - 12);
+      const y = clamp(point.y - dragOffset.y, lastLayout.box.h / 2 + 12, canvas.height - lastLayout.box.h / 2 - 12);
+      person.position = { x: x / canvas.width, y: y / canvas.height };
+      renderPreview();
+      event.preventDefault();
+    }
+
+    function finishPointerDrag(event) {
+      if (draggedPersonId === null) return;
+      if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+      draggedPersonId = null;
+      savePeople();
+      renderAll();
+      setStatus("配置を保存しました。");
+    }
+
+    function buildLayout(sourcePeople, width, height) {
+      const sorted = normalizePeople(sourcePeople);
+      const personMap = new Map(sorted.map((person) => [person.id, person]));
+      const generations = [...new Set(sorted.map((person) => person.generation))].sort((a, b) => a - b);
+      const box = { w: 156, h: 72 };
+      const coupleGap = 18;
+      const unitGap = 46;
+      const margin = 78;
+      const yGap = generations.length > 1 ? (height - margin * 2) / (generations.length - 1) : 0;
+      const positions = new Map();
+      const unitsByGeneration = new Map();
+
+      for (const generation of generations) {
+        const members = sorted.filter((person) => person.generation === generation);
+        const orderScore = (person) => {
+          const parentXs = person.parentIds.map((id) => positions.get(id)?.x).filter(Number.isFinite);
+          if (parentXs.length) return parentXs.reduce((sum, x) => sum + x, 0) / parentXs.length;
+          return person.id * 10000;
+        };
+        members.sort((a, b) => orderScore(a) - orderScore(b) || a.id - b.id);
+
+        const memberMap = new Map(members.map((person) => [person.id, person]));
+        const visited = new Set();
+        const units = [];
+        for (const person of members) {
+          if (visited.has(person.id)) continue;
+          const component = [];
+          const queue = [person];
+          visited.add(person.id);
+          while (queue.length) {
+            const current = queue.shift();
+            component.push(current);
+            for (const spouseId of current.spouseIds) {
+              const spouse = memberMap.get(spouseId);
+              if (spouse && !visited.has(spouse.id)) {
+                visited.add(spouse.id);
+                queue.push(spouse);
+              }
+            }
+          }
+          component.sort((a, b) => orderScore(a) - orderScore(b) || a.id - b.id);
+          units.push({ people: component, width: box.w * component.length + coupleGap * Math.max(0, component.length - 1) });
+        }
+
+        const totalWidth = units.reduce((sum, unit) => sum + unit.width, 0) + Math.max(0, units.length - 1) * unitGap;
+        let cursor = -totalWidth / 2;
+        const y = margin + generations.indexOf(generation) * yGap;
+        for (const unit of units) {
+          const start = cursor;
+          unit.center = start + unit.width / 2;
+          unit.y = y;
+          unit.people.forEach((unitPerson, index) => {
+            positions.set(unitPerson.id, { x: start + box.w / 2 + index * (box.w + coupleGap), y });
+          });
+          cursor += unit.width + unitGap;
+        }
+        unitsByGeneration.set(generation, units);
+      }
+
+      const rawBounds = getBounds([...positions.values()], box);
+      const contentWidth = rawBounds.maxX - rawBounds.minX;
+      const contentHeight = rawBounds.maxY - rawBounds.minY;
+      const scale = Math.min((width - margin * 2) / contentWidth, (height - margin * 2) / contentHeight, 1.35);
+      const offsetX = width / 2 - ((rawBounds.minX + rawBounds.maxX) / 2) * scale;
+      const offsetY = height / 2 - ((rawBounds.minY + rawBounds.maxY) / 2) * scale;
+      const scaled = new Map();
+      for (const [id, pos] of positions) {
+        scaled.set(id, { x: pos.x * scale + offsetX, y: pos.y * scale + offsetY });
+      }
+      const scaledBox = { w: box.w * scale, h: box.h * scale };
+      for (const person of sorted) {
+        if (!person.position) continue;
+        scaled.set(person.id, {
+          x: clamp(person.position.x * width, scaledBox.w / 2 + 12, width - scaledBox.w / 2 - 12),
+          y: clamp(person.position.y * height, scaledBox.h / 2 + 12, height - scaledBox.h / 2 - 12)
+        });
+      }
+
+      return { people: sorted, personMap, positions: scaled, generations, box: scaledBox, scale, unitsByGeneration };
+    }
+
+    function getBounds(points, box) {
+      if (!points.length) return { minX: 0, maxX: 1, minY: 0, maxY: 1 };
+      return points.reduce((bounds, pos) => ({
+        minX: Math.min(bounds.minX, pos.x - box.w / 2),
+        maxX: Math.max(bounds.maxX, pos.x + box.w / 2),
+        minY: Math.min(bounds.minY, pos.y - box.h / 2),
+        maxY: Math.max(bounds.maxY, pos.y + box.h / 2)
+      }), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+    }
+
+    function drawFamilyTree(targetCanvas, sourcePeople) {
+      const ctx = targetCanvas.getContext("2d");
+      const width = targetCanvas.width;
+      const height = targetCanvas.height;
+      const layout = buildLayout(sourcePeople, width, height);
+      lastLayout = layout;
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#fffdf8";
+      ctx.fillRect(0, 0, width, height);
+
+      drawGenerationBands(ctx, layout, width);
+      drawParentLines(ctx, layout);
+      drawMarriageLines(ctx, layout);
+      for (const person of layout.people) {
+        drawPerson(ctx, person, layout.positions.get(person.id), layout.box);
+      }
+    }
+
+    function drawGenerationBands(ctx, layout, width) {
+      ctx.save();
+      ctx.font = `${Math.max(11, 13 * layout.scale)}px system-ui, sans-serif`;
+      ctx.fillStyle = "#777a76";
+      ctx.strokeStyle = "#ece9df";
+      ctx.lineWidth = Math.max(1, layout.scale);
+      for (const generation of layout.generations) {
+        const first = layout.people.find((person) => person.generation === generation);
+        const y = first ? layout.positions.get(first.id).y : 0;
+        ctx.beginPath();
+        ctx.moveTo(36, y);
+        ctx.lineTo(width - 36, y);
+        ctx.stroke();
+        ctx.fillText(`第${generation}世代`, 42, y - layout.box.h / 2 - 12);
+      }
+      ctx.restore();
+    }
+
+    function drawMarriageLines(ctx, layout) {
+      const drawn = new Set();
+      ctx.save();
+      ctx.lineWidth = Math.max(2, 2.5 * layout.scale);
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--marriage").trim();
+      for (const person of layout.people) {
+        for (const spouseId of person.spouseIds) {
+          const pairKey = [person.id, spouseId].sort((a, b) => a - b).join(":");
+          if (drawn.has(pairKey)) continue;
+          const spouse = layout.personMap.get(spouseId);
+          const a = layout.positions.get(person.id);
+          const b = layout.positions.get(spouseId);
+          if (!spouse || !a || !b || spouse.generation !== person.generation) continue;
+          const left = a.x < b.x ? a : b;
+          const right = a.x < b.x ? b : a;
+          const relationshipType = person.spouseRelationshipTypes[String(spouseId)] || person.relationshipType || "married";
+          const lineStyle = getSpouseLineStyle(relationshipType);
+          ctx.setLineDash(lineStyle.dash.map((value) => value * layout.scale));
+          ctx.strokeStyle = lineStyle.color;
+          ctx.beginPath();
+          ctx.moveTo(left.x + layout.box.w / 2, left.y);
+          ctx.lineTo(right.x - layout.box.w / 2, right.y);
+          ctx.stroke();
+          drawn.add(pairKey);
+        }
+      }
+      ctx.restore();
+    }
+
+    function getSpouseLineStyle(relationshipType) {
+      if (relationshipType === "divorced") return { color: "#a43b35", dash: [8, 6] };
+      if (relationshipType === "widowed") return { color: "#6d7476", dash: [2, 5] };
+      return { color: getComputedStyle(document.documentElement).getPropertyValue("--marriage").trim(), dash: [] };
+    }
+
+    function drawParentLines(ctx, layout) {
+      const groups = new Map();
+      for (const child of layout.people) {
+        if (!child.parentIds.length) continue;
+        const parentIds = child.parentIds.slice().sort((a, b) => a - b);
+        const parentTypes = parentIds.map((parentId) => child.parentRelationshipTypes[String(parentId)] || "biological");
+        const key = `${parentIds.join(",")}|${parentTypes.join(",")}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(child);
+      }
+
+      ctx.save();
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--child").trim();
+      ctx.lineWidth = Math.max(1.4, 2 * layout.scale);
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      for (const [groupKey, children] of groups) {
+        const [parentKey, typeKey] = groupKey.split("|");
+        const parentIds = parentKey.split(",").map(Number);
+        const parentTypes = typeKey.split(",");
+        const parentPositions = parentIds.map((id) => layout.positions.get(id)).filter(Boolean);
+        const childPositions = children.map((child) => layout.positions.get(child.id)).filter(Boolean);
+        if (!parentPositions.length || !childPositions.length) continue;
+        const parentBottomY = Math.max(...parentPositions.map((pos) => pos.y + layout.box.h / 2));
+        const childTopY = Math.min(...childPositions.map((pos) => pos.y - layout.box.h / 2));
+        const verticalGap = Math.max(12 * layout.scale, childTopY - parentBottomY);
+        const busY = parentBottomY + verticalGap * 0.48;
+        const parentXs = parentPositions.map((pos) => pos.x);
+        const childXs = childPositions.map((pos) => pos.x);
+        const minBusX = Math.min(...parentXs, ...childXs);
+        const maxBusX = Math.max(...parentXs, ...childXs);
+
+        const lineStyle = getParentLineStyle(parentTypes);
+        ctx.strokeStyle = lineStyle.color;
+        ctx.setLineDash(lineStyle.dash.map((value) => value * layout.scale));
+        ctx.beginPath();
+        for (const parentPos of parentPositions) {
+          ctx.moveTo(parentPos.x, parentPos.y + layout.box.h / 2);
+          ctx.lineTo(parentPos.x, busY);
+        }
+        ctx.moveTo(minBusX, busY);
+        ctx.lineTo(maxBusX, busY);
+        for (const childPos of childPositions) {
+          ctx.moveTo(childPos.x, busY);
+          ctx.lineTo(childPos.x, childPos.y - layout.box.h / 2);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function getParentLineStyle(parentTypes) {
+      if (parentTypes.includes("adopted")) return { color: "#8a5a2b", dash: [7, 5] };
+      if (parentTypes.includes("step")) return { color: "#76536f", dash: [2, 5] };
+      if (parentTypes.includes("unknown")) return { color: "#6d7476", dash: [5, 4] };
+      return { color: getComputedStyle(document.documentElement).getPropertyValue("--child").trim(), dash: [] };
+    }
+
+    function drawPerson(ctx, person, pos, box) {
+      if (!pos) return;
+      const x = pos.x - box.w / 2;
+      const y = pos.y - box.h / 2;
+      const radius = Math.min(8, 7 * Math.max(0.7, box.w / 156));
+
+      ctx.save();
+      roundedRect(ctx, x, y, box.w, box.h, radius);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.strokeStyle = "#4f5654";
+      ctx.lineWidth = Math.max(1, 1.4 * box.w / 156);
+      ctx.stroke();
+
+      ctx.fillStyle = "#202322";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const nameSize = Math.max(9, 15 * box.w / 156);
+      const relationSize = Math.max(8, 10 * box.w / 156);
+      const yearsSize = Math.max(8, 11 * box.w / 156);
+      ctx.font = `700 ${nameSize}px system-ui, "Yu Gothic", sans-serif`;
+      fitText(ctx, person.name, pos.x, person.relation ? pos.y - relationSize * 1.7 : pos.y - yearsSize * 0.55, box.w - 16);
+      if (person.relation) {
+        ctx.font = `600 ${relationSize}px system-ui, "Yu Gothic", sans-serif`;
+        ctx.fillStyle = "#246f6b";
+        fitText(ctx, person.relation, pos.x, pos.y, box.w - 18);
+      }
+      ctx.font = `${yearsSize}px system-ui, "Yu Gothic", sans-serif`;
+      ctx.fillStyle = "#666b68";
+      fitText(ctx, person.years || `ID ${person.id}`, pos.x, pos.y + (person.relation ? relationSize * 1.7 : yearsSize * 1.05), box.w - 18);
+      ctx.restore();
+    }
+
+    function roundedRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    function fitText(ctx, text, x, y, maxWidth) {
+      if (ctx.measureText(text).width <= maxWidth) {
+        ctx.fillText(text, x, y);
+        return;
+      }
+      let clipped = text;
+      while (clipped.length > 1 && ctx.measureText(`${clipped}…`).width > maxWidth) {
+        clipped = clipped.slice(0, -1);
+      }
+      ctx.fillText(`${clipped}…`, x, y);
+    }
+
+    function applyJson() {
+      try {
+        const parsed = JSON.parse(jsonEditor.value);
+        applyPeopleData(parsed, "JSONを反映しました。");
+      } catch (error) {
+        setStatus(`JSONエラー: ${error.message}`);
+      }
+    }
+
+    function applyPeopleData(parsed, message) {
+      if (!Array.isArray(parsed)) throw new Error("人物データは配列形式で指定してください。");
+      people = normalizePeople(parsed);
+      selectedId = people[0]?.id ?? 1;
+      persistAndRender(message);
+    }
+
+    function exportJson() {
+      const blob = new Blob([JSON.stringify(people, null, 2)], { type: "application/json" });
+      if (lastJsonUrl) URL.revokeObjectURL(lastJsonUrl);
+      lastJsonUrl = URL.createObjectURL(blob);
+      jsonDownloadLink.href = lastJsonUrl;
+      jsonDownloadLink.download = `familytree-${new Date().toISOString().slice(0, 10)}.json`;
+      jsonDownloadBox.classList.add("is-visible");
+      setStatus("JSONを書き出しました。表示されたリンクをクリックして保存してください。");
+    }
+
+    async function importJsonFile(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try {
+        const parsed = JSON.parse(await file.text());
+        applyPeopleData(parsed, "JSONを読み込みました。");
+      } catch (error) {
+        setStatus(`JSON読込エラー: ${error.message}`);
+      } finally {
+        event.target.value = "";
+      }
+    }
+
+    form.addEventListener("submit", upsertPerson);
+    document.getElementById("newBtn").addEventListener("click", () => {
+      selectedId = null;
+      selectPerson(null);
+    });
+    document.getElementById("deleteBtn").addEventListener("click", deleteSelected);
+    document.getElementById("applyJsonBtn").addEventListener("click", applyJson);
+    document.getElementById("suggestRelationBtn").addEventListener("click", suggestRelation);
+    document.getElementById("exportJsonBtn").addEventListener("click", exportJson);
+    document.getElementById("importJsonBtn").addEventListener("click", () => jsonFileInput.click());
+    jsonFileInput.addEventListener("change", importJsonFile);
+    document.getElementById("manualLayoutBtn").addEventListener("click", toggleManualLayout);
+    document.getElementById("resetLayoutBtn").addEventListener("click", resetManualLayout);
+    canvas.addEventListener("pointerdown", handlePointerDown);
+    canvas.addEventListener("pointermove", handlePointerMove);
+    canvas.addEventListener("pointerup", finishPointerDrag);
+    canvas.addEventListener("pointercancel", finishPointerDrag);
+    document.getElementById("sampleBtn").addEventListener("click", () => {
+      people = normalizePeople(structuredClone(samplePeople));
+      selectedId = people[0].id;
+      persistAndRender("サンプルデータを復元しました。");
+    });
+    document.getElementById("fitBtn").addEventListener("click", renderPreview);
+    paperSizeSelect.addEventListener("change", () => {
+      paperSize = PAPER_SIZES[paperSizeSelect.value] ? paperSizeSelect.value : DEFAULT_PAPER_SIZE;
+      savePaperSize();
+      renderAll();
+      setStatus(`${getPaperSpec().label}横に変更しました。`);
+    });
+    document.getElementById("printBtn").addEventListener("click", () => window.print());
+    window.addEventListener("resize", renderPreview);
+
+    renderAll();
+  </script>
+</body>
+</html>
