@@ -201,13 +201,19 @@ async function main() {
     }
 
     // --- Service Worker ---
+    // ready は「activeなworkerがいる」時点で解決するので、activating のことがある。
+    // 状態が activated になるまで待たないと、たまたま落ちるテストになる。
+    const activated = await waitFor(
+      async () => (await session.evaluate('navigator.serviceWorker.ready.then((r) => r.active?.state ?? null)')) === "activated",
+      { label: "Service Workerの有効化" }
+    ).catch(() => false);
     const registration = await session.evaluate(`
       navigator.serviceWorker.ready.then((registration) => ({
         scope: registration.scope,
         state: registration.active?.state ?? null
       }))
     `);
-    ok("Service Workerが有効になる", registration.state === "activated", registration.state);
+    ok("Service Workerが有効になる", activated, registration.state);
     ok("スコープはサブパスに収まる", registration.scope === origin, registration.scope);
     ok("ページが制御下に入る", await waitFor(() => session.evaluate("!!navigator.serviceWorker.controller"), { label: "SWの制御" }));
 
