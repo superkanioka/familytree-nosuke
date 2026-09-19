@@ -263,6 +263,49 @@
       }
     }
 
+    /* ===== Icon buttons / small tonal buttons ===== */
+    .icon-button {
+      width: 40px;
+      min-width: 40px;
+      height: 40px;
+      padding: 0;
+      color: var(--md-on-surface-variant);
+      background: transparent;
+    }
+
+    .icon-button:hover {
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .icon-button .icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .tonal-sm {
+      min-height: 32px;
+      padding: 4px 14px 4px 10px;
+      color: var(--md-on-secondary-container);
+      background: var(--md-secondary-container);
+      font-size: 13px;
+    }
+
+    .tonal-sm:hover {
+      background: var(--md-secondary-container);
+    }
+
+    button:disabled {
+      opacity: 0.38;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    button:disabled:hover::before,
+    button:disabled:active::before {
+      opacity: 0;
+    }
+
     /* ===== Layout ===== */
     .app {
       min-height: 100vh;
@@ -712,6 +755,143 @@
       font-size: 12px;
     }
 
+    /* ===== Relation editors (parents / spouses) ===== */
+    .relation-field {
+      margin: 16px 0;
+    }
+
+    .relation-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .relation-label {
+      color: var(--md-on-surface-variant);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    .relation-list {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .relation-list:empty::after {
+      content: "未設定";
+      display: block;
+      padding: 6px 2px;
+      color: var(--md-on-surface-variant);
+      font-size: 12px;
+    }
+
+    .relation-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 6px 6px 12px;
+      border-radius: var(--md-shape-md);
+      background: var(--md-surface-container);
+    }
+
+    .relation-row .relation-name {
+      font-size: 13px;
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .relation-row select {
+      min-height: 36px;
+      width: auto;
+      padding: 6px 30px 6px 10px;
+      font-size: 12px;
+      background-color: var(--md-surface-container-lowest);
+    }
+
+    /* ===== Field errors ===== */
+    .field-error {
+      color: var(--md-error);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    input.is-invalid,
+    select.is-invalid {
+      border-color: var(--md-error);
+      box-shadow: inset 0 0 0 1px var(--md-error);
+    }
+
+    /* ===== Person picker ===== */
+    .picker-dialog {
+      width: min(92vw, 420px);
+    }
+
+    .picker-search {
+      margin: 16px 0 8px;
+    }
+
+    .picker-list {
+      display: grid;
+      gap: 2px;
+      max-height: min(50vh, 320px);
+      overflow: auto;
+      margin: 0 -8px;
+      padding: 0 8px;
+    }
+
+    .picker-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: center;
+      width: 100%;
+      min-height: 56px;
+      padding: 8px 12px;
+      border-radius: var(--md-shape-md);
+      color: var(--md-on-surface);
+      background: transparent;
+      text-align: left;
+      justify-content: start;
+      font-weight: 500;
+    }
+
+    .picker-row:hover {
+      background: var(--md-surface-container-highest);
+      box-shadow: none;
+    }
+
+    .picker-name {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.35;
+      white-space: normal;
+    }
+
+    .picker-meta {
+      display: block;
+      margin-top: 2px;
+      color: var(--md-on-surface-variant);
+      font-size: 11px;
+      line-height: 1.45;
+      white-space: normal;
+    }
+
+    .picker-empty {
+      margin: 16px 0 0;
+      color: var(--md-on-surface-variant);
+      font-size: 13px;
+    }
+
+    .picker-empty[hidden] {
+      display: none;
+    }
+
     /* ===== People list (M3 list items) ===== */
     .people-list {
       display: grid;
@@ -909,6 +1089,9 @@
     <symbol id="ic-print" viewBox="0 0 24 24"><path d="M7 9.5V4h10v5.5"/><path d="M7 18.5H5.5a2 2 0 0 1-2-2v-4.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2V16.5a2 2 0 0 1-2 2H17"/><rect x="7" y="15" width="10" height="5.5" rx="1.2"/></symbol>
     <symbol id="ic-warning" viewBox="0 0 24 24"><path d="M12 4.2 2.8 20h18.4z"/><path d="M12 10v4.2M12 17.2v.6"/></symbol>
     <symbol id="ic-history" viewBox="0 0 24 24"><path d="M4.1 12a7.9 7.9 0 1 0 2.3-5.6"/><polyline points="4.1 4.2 4.1 9 8.9 9"/><polyline points="12 7.8 12 12 15.2 13.8"/></symbol>
+    <symbol id="ic-undo" viewBox="0 0 24 24"><polyline points="8.5 6 4.5 10 8.5 14"/><path d="M4.5 10h9a5.5 5.5 0 0 1 0 11H9"/></symbol>
+    <symbol id="ic-redo" viewBox="0 0 24 24"><polyline points="15.5 6 19.5 10 15.5 14"/><path d="M19.5 10h-9a5.5 5.5 0 0 0 0 11H15"/></symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
     <symbol id="ic-edit" viewBox="0 0 24 24"><path d="M4.5 19.5h4L19.2 8.8a2 2 0 0 0-2.9-2.9L5.5 16.5z"/><path d="M14.8 7.4l2.8 2.8"/></symbol>
   </svg>
 
@@ -927,20 +1110,11 @@
           <svg class="icon" aria-hidden="true"><use href="#ic-person"/></svg>
           <h2>人物を編集</h2>
         </div>
-        <form id="personForm">
-          <div class="grid-2">
-            <label>
-              ID
-              <input id="personId" type="number" min="1" required>
-            </label>
-            <label>
-              世代
-              <input id="generation" type="number" min="0" max="12" required>
-            </label>
-          </div>
+        <form id="personForm" novalidate>
           <label>
             氏名
-            <input id="name" type="text" required>
+            <input id="name" type="text" autocomplete="off" required>
+            <span class="field-error" id="nameError" hidden></span>
           </label>
           <label>
             続柄
@@ -962,40 +1136,31 @@
               <option value="配偶者"></option>
             </datalist>
           </label>
-          <label>
-            生没年
-            <input id="years" type="text" placeholder="1930-2005">
-          </label>
           <div class="grid-2">
             <label>
-              配偶者ID（複数可）
-              <input id="spouseId" type="text" inputmode="numeric" placeholder="例: 2,5">
+              生没年
+              <input id="years" type="text" placeholder="1930-2005">
             </label>
             <label>
-              関係種別
-              <select id="relationshipType">
-                <option value="married">結婚</option>
-                <option value="divorced">離婚</option>
-                <option value="widowed">死別</option>
-                <option value="partner">パートナー</option>
-                <option value="mixed">関係ごとに保持</option>
-              </select>
+              世代
+              <input id="generation" type="number" min="0" max="12" required>
+              <span class="field-error" id="generationError" hidden></span>
             </label>
           </div>
-          <label>
-            親ID
-            <input id="parentIds" type="text" placeholder="例: 1,2">
-          </label>
-          <label>
-            親子関係
-            <select id="parentRelationshipType">
-              <option value="biological">実親</option>
-              <option value="adopted">養親</option>
-              <option value="step">継親</option>
-              <option value="unknown">不明</option>
-              <option value="mixed">親ごとに保持</option>
-            </select>
-          </label>
+          <div class="relation-field">
+            <div class="relation-head">
+              <span class="relation-label">親</span>
+              <button type="button" class="tonal-sm" id="addParentBtn"><svg class="icon" aria-hidden="true"><use href="#ic-add"/></svg>親を選ぶ</button>
+            </div>
+            <div class="relation-list" id="parentList"></div>
+          </div>
+          <div class="relation-field">
+            <div class="relation-head">
+              <span class="relation-label">配偶者</span>
+              <button type="button" class="tonal-sm" id="addSpouseBtn"><svg class="icon" aria-hidden="true"><use href="#ic-add"/></svg>配偶者を選ぶ</button>
+            </div>
+            <div class="relation-list" id="spouseList"></div>
+          </div>
           <div class="actions">
             <button type="submit" id="saveBtn"><svg class="icon" aria-hidden="true"><use href="#ic-check"/></svg><span class="btn-label">保存</span></button>
             <button type="button" class="secondary" id="newBtn"><svg class="icon" aria-hidden="true"><use href="#ic-add"/></svg><span class="btn-label">新規</span></button>
@@ -1050,6 +1215,8 @@
       <div class="toolbar">
         <strong id="summary" class="chip">0人</strong>
         <span class="status chip chip-outline" id="layoutSummary"></span>
+        <button type="button" class="icon-button" id="undoActionBtn" title="元に戻す (Ctrl+Z)" aria-label="元に戻す" disabled><svg class="icon" aria-hidden="true"><use href="#ic-undo"/></svg></button>
+        <button type="button" class="icon-button" id="redoActionBtn" title="やり直す (Ctrl+Shift+Z)" aria-label="やり直す" disabled><svg class="icon" aria-hidden="true"><use href="#ic-redo"/></svg></button>
         <span class="spacer"></span>
         <label class="toolbar-size">
           用紙サイズ
@@ -1070,6 +1237,22 @@
       </div>
     </section>
   </main>
+
+  <dialog id="pickerDialog" class="picker-dialog" aria-labelledby="pickerTitle">
+    <div class="dialog-head">
+      <svg class="icon" aria-hidden="true"><use href="#ic-people"/></svg>
+      <h2 class="dialog-title" id="pickerTitle">人物を選ぶ</h2>
+    </div>
+    <label class="picker-search">
+      名前で絞り込む
+      <input id="pickerSearch" type="search" autocomplete="off" placeholder="例: 太郎">
+    </label>
+    <div class="picker-list" id="pickerList"></div>
+    <p class="picker-empty" id="pickerEmpty" hidden>選べる人物がいません。先に人物を追加してください。</p>
+    <div class="dialog-actions">
+      <button type="button" class="text" id="pickerCancelBtn">キャンセル</button>
+    </div>
+  </dialog>
 
   <dialog id="confirmDialog" aria-labelledby="confirmTitle">
     <form method="dialog">
@@ -1155,11 +1338,6 @@
         .sort((a, b) => a.generation - b.generation || a.id - b.id);
     }
 
-    function toNullableNumber(value) {
-      if (value === null || value === undefined || value === "") return null;
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : null;
-    }
 
     function normalizeParentRelationshipTypes(value) {
       if (!value || typeof value !== "object" || Array.isArray(value)) return {};
@@ -1193,37 +1371,9 @@
       return Math.min(max, Math.max(min, value));
     }
 
-    function parseParentIds(value) {
-      return value
-        .split(",")
-        .map((part) => Number(part.trim()))
-        .filter((id) => Number.isFinite(id) && id > 0)
-        .slice(0, 2);
-    }
 
-    function parseSpouseIds(value) {
-      return normalizeSpouseIds(String(value || "").split(","), null);
-    }
 
-    function buildSpouseRelationshipTypes(value, selectedType, previousTypes = {}) {
-      const spouseIds = parseSpouseIds(value);
-      if (selectedType === "mixed") {
-        return Object.fromEntries(spouseIds.map((spouseId) => [
-          String(spouseId), previousTypes[String(spouseId)] || "married"
-        ]));
-      }
-      return Object.fromEntries(spouseIds.map((spouseId) => [String(spouseId), selectedType]));
-    }
 
-    function buildParentRelationshipTypes(value, selectedType, previousTypes = {}) {
-      const parentIds = parseParentIds(value);
-      if (selectedType === "mixed") {
-        return Object.fromEntries(parentIds.map((parentId) => [
-          String(parentId), previousTypes[String(parentId)] || "biological"
-        ]));
-      }
-      return Object.fromEntries(parentIds.map((parentId) => [String(parentId), selectedType]));
-    }
 
     function parentKey(parentIds) {
       return parentIds.slice().sort((a, b) => a - b).join(",");
@@ -1255,6 +1405,131 @@
         relation: generation === 0 ? "先祖" : "本人",
         message: "続柄候補を入れました。必要なら自由に修正できます。"
       };
+    }
+
+    const SPOUSE_RELATIONSHIP_LABELS = {
+      married: "結婚",
+      divorced: "離婚",
+      widowed: "死別",
+      partner: "パートナー"
+    };
+
+    const PARENT_RELATIONSHIP_LABELS = {
+      biological: "実親",
+      adopted: "養親",
+      step: "継親",
+      unknown: "不明"
+    };
+
+    // 編集フォームが持つ下書き。IDは新規なら null で、保存時に採番する。
+    function createDraft(person = null) {
+      if (!person) {
+        return { id: null, name: "", relation: "", years: "", generation: 0, parents: [], spouses: [] };
+      }
+      return {
+        id: person.id,
+        name: person.name,
+        relation: person.relation,
+        years: person.years,
+        generation: person.generation,
+        parents: person.parentIds.map((id) => ({
+          id,
+          type: person.parentRelationshipTypes[String(id)] || "biological"
+        })),
+        spouses: person.spouseIds.map((id) => ({
+          id,
+          type: person.spouseRelationshipTypes[String(id)] || person.relationshipType || "married"
+        }))
+      };
+    }
+
+    function validateDraft(draft) {
+      const errors = {};
+      if (!String(draft.name ?? "").trim()) errors.name = "氏名を入力してください。";
+      const generation = Number(draft.generation);
+      if (!Number.isFinite(generation) || generation < 0) errors.generation = "世代は0以上の数字で入力してください。";
+      return errors;
+    }
+
+    // 親を選ぶと世代が決まる。親がいなければ null（利用者の入力を尊重する）。
+    function suggestedGeneration(people, parentIds) {
+      const generations = parentIds
+        .map((id) => people.find((person) => person.id === id)?.generation)
+        .filter((value) => Number.isFinite(value));
+      return generations.length ? Math.max(...generations) + 1 : null;
+    }
+
+    function normalizeRelationEntries(entries, selfId, fallbackType, limit = Infinity) {
+      const seen = new Set();
+      const result = [];
+      for (const entry of entries ?? []) {
+        const id = Number(entry?.id);
+        if (!Number.isFinite(id) || id <= 0 || id === selfId || seen.has(id)) continue;
+        seen.add(id);
+        result.push({ id, type: entry?.type || fallbackType });
+        if (result.length >= limit) break;
+      }
+      return result;
+    }
+
+    // 下書きを people に反映する。配偶者は相手側のリンクもここで揃える。
+    function applyPersonEdit(people, draft) {
+      const id = draft.id ?? nextId(people);
+      const previous = people.find((person) => person.id === id) ?? null;
+      const parents = normalizeRelationEntries(draft.parents, id, "biological", 2);
+      const spouses = normalizeRelationEntries(draft.spouses, id, "married");
+
+      const person = {
+        id,
+        name: String(draft.name ?? "").trim(),
+        relation: String(draft.relation ?? "").trim(),
+        years: String(draft.years ?? "").trim(),
+        generation: Number(draft.generation),
+        position: previous?.position ?? null,
+        spouseId: spouses[0]?.id ?? null,
+        spouseIds: spouses.map((entry) => entry.id),
+        spouseRelationshipTypes: Object.fromEntries(spouses.map((entry) => [String(entry.id), entry.type])),
+        parentIds: parents.map((entry) => entry.id),
+        parentRelationshipTypes: Object.fromEntries(parents.map((entry) => [String(entry.id), entry.type])),
+        relationshipType: spouses[0]?.type ?? "married",
+        relationshipMeta: previous?.relationshipMeta ?? {}
+      };
+
+      const next = people.map((item) => ({
+        ...item,
+        spouseIds: [...item.spouseIds],
+        spouseRelationshipTypes: { ...item.spouseRelationshipTypes }
+      }));
+      const index = next.findIndex((item) => item.id === id);
+      if (index >= 0) next[index] = person;
+      else next.push(person);
+
+      const spouseIdSet = new Set(person.spouseIds);
+      for (const other of next) {
+        if (other.id === id) continue;
+        const linked = other.spouseIds.includes(id);
+        if (spouseIdSet.has(other.id)) {
+          if (!linked) other.spouseIds.push(id);
+          other.spouseRelationshipTypes[String(id)] = person.spouseRelationshipTypes[String(other.id)];
+        } else if (linked) {
+          other.spouseIds = other.spouseIds.filter((spouseId) => spouseId !== id);
+          delete other.spouseRelationshipTypes[String(id)];
+        }
+        other.spouseId = other.spouseIds[0] ?? null;
+      }
+
+      return { people: normalizePeople(next), id };
+    }
+
+    // 人物一覧に出す説明。IDではなく名前で関係を示す。
+    function describeRelations(person, people) {
+      const nameOf = (id) => people.find((item) => item.id === id)?.name || `#${id}`;
+      const parts = [`第${person.generation}世代`];
+      if (person.relation) parts.unshift(person.relation);
+      if (person.years) parts.push(person.years);
+      if (person.spouseIds.length) parts.push(`配偶者: ${person.spouseIds.map(nameOf).join("、")}`);
+      if (person.parentIds.length) parts.push(`親: ${person.parentIds.map(nameOf).join("、")}`);
+      return parts.join(" / ");
     }
 
     // ---- src/layout.js ----
@@ -1576,16 +1851,25 @@
     const form = document.getElementById("personForm");
 
     const fields = {
-      id: document.getElementById("personId"),
       name: document.getElementById("name"),
-      years: document.getElementById("years"),
-      generation: document.getElementById("generation"),
-      spouseId: document.getElementById("spouseId"),
-      relationshipType: document.getElementById("relationshipType"),
       relation: document.getElementById("relation"),
-      parentIds: document.getElementById("parentIds"),
-      parentRelationshipType: document.getElementById("parentRelationshipType")
+      years: document.getElementById("years"),
+      generation: document.getElementById("generation")
     };
+    const fieldErrors = {
+      name: document.getElementById("nameError"),
+      generation: document.getElementById("generationError")
+    };
+    const parentList = document.getElementById("parentList");
+    const spouseList = document.getElementById("spouseList");
+    const pickerDialog = document.getElementById("pickerDialog");
+    const pickerSearch = document.getElementById("pickerSearch");
+    const pickerList = document.getElementById("pickerList");
+    const pickerEmpty = document.getElementById("pickerEmpty");
+    const pickerTitle = document.getElementById("pickerTitle");
+    const pickerCancelBtn = document.getElementById("pickerCancelBtn");
+    const undoActionBtn = document.getElementById("undoActionBtn");
+    const redoActionBtn = document.getElementById("redoActionBtn");
 
     const canvas = document.getElementById("treeCanvas");
 
@@ -1629,7 +1913,11 @@
 
     let lastJsonUrl = "";
 
-    let pendingUndo = null;
+    // 編集中の下書き。IDは新規なら null で、保存時に採番する。
+    let draft = createDraft(null);
+    // 取り消し履歴。past の末尾が「ひとつ前の状態」。
+    const history = { past: [], future: [] };
+    const HISTORY_LIMIT = 50;
 
     function getPaperSpec() {
       return PAPER_SIZES[paperSize] || PAPER_SIZES[DEFAULT_PAPER_SIZE];
@@ -1740,9 +2028,9 @@
         okLabel: "復元"
       });
       if (!confirmed) return;
-      const previous = snapshot();
       try {
-        applyPeopleData(JSON.parse(backup.json), "バックアップから復元しました。", { undo: previous });
+        pushHistory();
+        applyPeopleData(JSON.parse(backup.json), "バックアップから復元しました。", { undo: true });
       } catch (error) {
         setStatus(`バックアップを読み込めませんでした: ${error.message}`, { tone: "error" });
       }
@@ -1762,10 +2050,131 @@
       return { people: structuredClone(people), selectedId };
     }
 
-    function restoreSnapshot(saved) {
+    // 破壊的な操作の直前に呼ぶ。past に積み、やり直し履歴は捨てる。
+    function pushHistory() {
+      history.past.push(snapshot());
+      if (history.past.length > HISTORY_LIMIT) history.past.shift();
+      history.future.length = 0;
+    }
+
+    function undo() {
+      const previous = history.past.pop();
+      if (!previous) return false;
+      history.future.push(snapshot());
+      applySnapshot(previous, "元に戻しました。");
+      return true;
+    }
+
+    function redo() {
+      const next = history.future.pop();
+      if (!next) return false;
+      history.past.push(snapshot());
+      applySnapshot(next, "やり直しました。");
+      return true;
+    }
+
+    function applySnapshot(saved, message) {
       people = normalizePeople(saved.people);
       selectedId = saved.selectedId ?? people[0]?.id ?? null;
-      persistAndRender("元に戻しました。");
+      savePeople();
+      renderAll();
+      setStatus(message);
+    }
+
+    function updateHistoryButtons() {
+      undoActionBtn.disabled = history.past.length === 0;
+      redoActionBtn.disabled = history.future.length === 0;
+    }
+
+
+    // 名前で人物を選ぶダイアログ。選ばれたIDを返し、閉じられたら null を返す。
+    function openPersonPicker({ title, excludeIds }) {
+      const candidates = people.filter((person) => !excludeIds.includes(person.id));
+      if (!candidates.length) {
+        setStatus("選べる人物がいません。先に人物を追加してください。");
+        return Promise.resolve(null);
+      }
+      if (typeof pickerDialog.showModal !== "function" || pickerDialog.open) return Promise.resolve(null);
+
+      pickerTitle.textContent = title;
+      pickerSearch.value = "";
+      pickerEmpty.hidden = true;
+
+      return new Promise((resolve) => {
+        const finish = (id) => {
+          pickerSearch.removeEventListener("input", renderCandidates);
+          pickerCancelBtn.removeEventListener("click", cancel);
+          pickerDialog.removeEventListener("cancel", cancel);
+          pickerDialog.removeEventListener("close", cancel);
+          if (pickerDialog.open) pickerDialog.close();
+          resolve(id);
+        };
+        const cancel = () => finish(null);
+
+        function renderCandidates() {
+          const keyword = pickerSearch.value.trim().toLowerCase();
+          const shown = keyword
+            ? candidates.filter((person) => `${person.name}${person.relation}${person.years}`.toLowerCase().includes(keyword))
+            : candidates;
+          pickerList.innerHTML = "";
+          pickerEmpty.hidden = shown.length > 0;
+          for (const person of shown) {
+            const row = document.createElement("button");
+            row.type = "button";
+            row.className = "picker-row";
+            const avatar = document.createElement("span");
+            avatar.className = "person-avatar";
+            avatar.textContent = [...(person.name || "?")][0];
+            const text = document.createElement("span");
+            const name = document.createElement("span");
+            name.className = "picker-name";
+            name.textContent = person.name;
+            const meta = document.createElement("span");
+            meta.className = "picker-meta";
+            meta.textContent = describeRelations(person, people);
+            text.append(name, meta);
+            row.append(avatar, text);
+            row.addEventListener("click", () => finish(person.id));
+            pickerList.append(row);
+          }
+        }
+
+        pickerSearch.addEventListener("input", renderCandidates);
+        pickerCancelBtn.addEventListener("click", cancel);
+        pickerDialog.addEventListener("cancel", cancel);
+        pickerDialog.addEventListener("close", cancel);
+        renderCandidates();
+        pickerDialog.showModal();
+        pickerSearch.focus();
+      });
+    }
+
+    async function addParent() {
+      readDraftFields();
+      if (draft.parents.length >= 2) {
+        setStatus("親は2人までです。入れ替えるには、いま登録されている親を外してください。");
+        return;
+      }
+      const excludeIds = [draft.id, ...draft.parents.map((entry) => entry.id), ...draft.spouses.map((entry) => entry.id)]
+        .filter((id) => id !== null);
+      const id = await openPersonPicker({ title: "親を選ぶ", excludeIds });
+      if (id === null) return;
+      draft.parents.push({ id, type: "biological" });
+      const generation = suggestedGeneration(people, draft.parents.map((entry) => entry.id));
+      if (generation !== null) draft.generation = generation;
+      renderDraft();
+      setStatus(generation === null ? "親を追加しました。" : `親を追加し、世代を${generation}にしました。`);
+    }
+
+    async function addSpouse() {
+      readDraftFields();
+      const excludeIds = [draft.id, ...draft.spouses.map((entry) => entry.id), ...draft.parents.map((entry) => entry.id)]
+        .filter((id) => id !== null);
+      const id = await openPersonPicker({ title: "配偶者を選ぶ", excludeIds });
+      if (id === null) return;
+      draft.spouses.push({ id, type: "married" });
+      renderDraft();
+      setStatus("配偶者を追加しました。");
     }
 
     function confirmAction({ title, body, okLabel = "削除" }) {
@@ -1802,15 +2211,14 @@
     }
 
     function setStatus(message, options = {}) {
-      const { tone = "default", persistent = false, undo = null } = options;
+      const { tone = "default", persistent = false, undo: canUndo = false } = options;
       status.textContent = message;
       snackbar.hidden = !message;
       snackbar.classList.toggle("is-error", tone === "error");
-      pendingUndo = undo;
-      undoBtn.hidden = !undo;
+      undoBtn.hidden = !canUndo || history.past.length === 0;
       window.clearTimeout(setStatus.timer);
       if (!message || persistent) return;
-      setStatus.timer = window.setTimeout(hideStatus, undo ? 10000 : 4000);
+      setStatus.timer = window.setTimeout(hideStatus, canUndo ? 10000 : 4000);
     }
 
     function hideStatus() {
@@ -1818,124 +2226,132 @@
       snackbar.hidden = true;
       snackbar.classList.remove("is-error");
       undoBtn.hidden = true;
-      pendingUndo = null;
     }
 
     function selectPerson(id) {
       selectedId = id;
-      const person = people.find((item) => item.id === id);
-      if (!person) {
-        fields.id.value = nextId(people);
-        fields.name.value = "";
-        fields.relation.value = "";
-        fields.years.value = "";
-        fields.generation.value = 0;
-        fields.spouseId.value = "";
-        fields.relationshipType.value = "married";
-        fields.parentIds.value = "";
-        fields.parentRelationshipType.value = "biological";
-        return;
+      const person = people.find((item) => item.id === id) ?? null;
+      draft = createDraft(person);
+      renderDraft();
+    }
+
+    // 下書きを入力欄と関係リストへ流し込む。
+    function renderDraft() {
+      fields.name.value = draft.name;
+      fields.relation.value = draft.relation;
+      fields.years.value = draft.years;
+      fields.generation.value = draft.generation;
+      clearFieldErrors();
+      renderRelationList(parentList, draft.parents, PARENT_RELATIONSHIP_LABELS, "親");
+      renderRelationList(spouseList, draft.spouses, SPOUSE_RELATIONSHIP_LABELS, "配偶者");
+    }
+
+    // 入力欄の内容を下書きへ取り込む（関係は下書き側が常に正）。
+    function readDraftFields() {
+      draft.name = fields.name.value;
+      draft.relation = fields.relation.value;
+      draft.years = fields.years.value;
+      draft.generation = fields.generation.value;
+    }
+
+    function renderRelationList(container, entries, labels, kind) {
+      container.innerHTML = "";
+      for (const entry of entries) {
+        const person = people.find((item) => item.id === entry.id);
+        const row = document.createElement("div");
+        row.className = "relation-row";
+
+        const name = document.createElement("span");
+        name.className = "relation-name";
+        name.textContent = person?.name || `#${entry.id}`;
+
+        const select = document.createElement("select");
+        select.setAttribute("aria-label", `${name.textContent}との関係`);
+        for (const [value, label] of Object.entries(labels)) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          select.append(option);
+        }
+        select.value = labels[entry.type] ? entry.type : Object.keys(labels)[0];
+        select.addEventListener("change", () => {
+          entry.type = select.value;
+        });
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "icon-button";
+        remove.title = `${kind}から外す`;
+        remove.setAttribute("aria-label", `${name.textContent}を${kind}から外す`);
+        remove.append(createIcon("ic-close"));
+        remove.addEventListener("click", () => {
+          const index = entries.indexOf(entry);
+          if (index >= 0) entries.splice(index, 1);
+          renderDraft();
+        });
+
+        row.append(name, select, remove);
+        container.append(row);
       }
-      fields.id.value = person.id;
-      fields.name.value = person.name;
-      fields.relation.value = person.relation;
-      fields.years.value = person.years;
-      fields.generation.value = person.generation;
-      fields.spouseId.value = person.spouseIds.join(",");
-      const spouseTypes = person.spouseIds.map((spouseId) => person.spouseRelationshipTypes[String(spouseId)] || person.relationshipType || "married");
-      fields.relationshipType.value = spouseTypes.length && spouseTypes.every((type) => type === spouseTypes[0]) ? spouseTypes[0] : "mixed";
-      fields.parentIds.value = person.parentIds.join(",");
-      const parentTypes = person.parentIds.map((parentId) => person.parentRelationshipTypes[String(parentId)] || "biological");
-      fields.parentRelationshipType.value = parentTypes.length && parentTypes.every((type) => type === parentTypes[0]) ? parentTypes[0] : "mixed";
+    }
+
+    function clearFieldErrors() {
+      for (const [key, element] of Object.entries(fieldErrors)) {
+        element.hidden = true;
+        element.textContent = "";
+        fields[key].classList.remove("is-invalid");
+        fields[key].removeAttribute("aria-invalid");
+      }
+    }
+
+    function showFieldErrors(errors) {
+      clearFieldErrors();
+      for (const [key, message] of Object.entries(errors)) {
+        const element = fieldErrors[key];
+        if (!element) continue;
+        element.textContent = message;
+        element.hidden = false;
+        fields[key].classList.add("is-invalid");
+        fields[key].setAttribute("aria-invalid", "true");
+      }
+      const first = Object.keys(errors)[0];
+      if (first && fields[first]) fields[first].focus();
     }
 
     function suggestRelation() {
+      readDraftFields();
       const suggestion = suggestRelationFor({
         people,
-        currentId: toNullableNumber(fields.id.value),
-        parentIds: parseParentIds(fields.parentIds.value),
-        hasSpouse: Boolean(toNullableNumber(fields.spouseId.value)),
-        generation: Number(fields.generation.value)
+        currentId: draft.id,
+        parentIds: draft.parents.map((entry) => entry.id),
+        hasSpouse: draft.spouses.length > 0,
+        generation: Number(draft.generation)
       });
+      draft.relation = suggestion.relation;
       fields.relation.value = suggestion.relation;
       setStatus(suggestion.message);
     }
 
     function upsertPerson(event) {
       event.preventDefault();
-      const previousPerson = people.find((item) => item.id === Number(fields.id.value));
-      const spouseIds = parseSpouseIds(fields.spouseId.value);
-      const person = {
-        id: Number(fields.id.value),
-        name: fields.name.value.trim(),
-        relation: fields.relation.value.trim(),
-        years: fields.years.value.trim(),
-        generation: Number(fields.generation.value),
-        position: previousPerson?.position || null,
-        spouseId: spouseIds[0] ?? null,
-        spouseIds,
-        spouseRelationshipTypes: buildSpouseRelationshipTypes(fields.spouseId.value, fields.relationshipType.value, previousPerson?.spouseRelationshipTypes),
-        parentIds: parseParentIds(fields.parentIds.value),
-        parentRelationshipTypes: buildParentRelationshipTypes(fields.parentIds.value, fields.parentRelationshipType.value, previousPerson?.parentRelationshipTypes),
-        relationshipType: fields.relationshipType.value,
-        relationshipMeta: previousPerson?.relationshipMeta || {}
-      };
-
-      if (!person.id || !person.name || !Number.isFinite(person.generation)) {
-        setStatus("ID、氏名、世代を確認してください。");
+      readDraftFields();
+      const errors = validateDraft(draft);
+      if (Object.keys(errors).length) {
+        showFieldErrors(errors);
+        setStatus("入力内容を確認してください。", { tone: "error" });
         return;
       }
-      if (person.spouseIds.includes(person.id)) {
-        setStatus("配偶者IDに自分自身は指定できません。");
-        return;
-      }
-      if (person.parentIds.includes(person.id)) {
-        setStatus("親IDに自分自身は指定できません。");
-        return;
-      }
+      clearFieldErrors();
 
-      const sameIdIndex = people.findIndex((item) => item.id === person.id);
-      if (sameIdIndex >= 0 && person.id !== selectedId) {
-        const owner = people[sameIdIndex];
-        setStatus(`ID ${person.id} は「${owner.name || `#${owner.id}`}」が使用中です。別のIDを指定してください。`, { tone: "error" });
-        return;
-      }
-
-      if (sameIdIndex >= 0) {
-        people[sameIdIndex] = person;
-      } else {
-        people.push(person);
-      }
-
-      clearPreviousSpouseLinks(previousPerson, person);
-      syncSpouseLinks(person);
-      people = normalizePeople(people);
-      selectedId = person.id;
-      persistAndRender("保存しました。");
+      const isNew = draft.id === null;
+      pushHistory();
+      const result = applyPersonEdit(people, draft);
+      people = result.people;
+      selectedId = result.id;
+      persistAndRender(isNew ? `「${draft.name.trim()}」を追加しました。` : "保存しました。", { undo: true });
     }
 
-    function clearPreviousSpouseLinks(previousPerson, currentPerson) {
-      if (!previousPerson) return;
-      const currentSpouseIds = new Set(currentPerson.spouseIds);
-      for (const previousSpouseId of previousPerson.spouseIds) {
-        if (currentSpouseIds.has(previousSpouseId)) continue;
-        const previousSpouse = people.find((item) => item.id === previousSpouseId);
-        if (!previousSpouse) continue;
-        previousSpouse.spouseIds = previousSpouse.spouseIds.filter((spouseId) => spouseId !== currentPerson.id);
-        previousSpouse.spouseId = previousSpouse.spouseIds[0] ?? null;
-        delete previousSpouse.spouseRelationshipTypes[String(currentPerson.id)];
-      }
-    }
 
-    function syncSpouseLinks(person) {
-      for (const spouseId of person.spouseIds) {
-        const spouse = people.find((item) => item.id === spouseId);
-        if (!spouse) continue;
-        if (!spouse.spouseIds.includes(person.id)) spouse.spouseIds.push(person.id);
-        spouse.spouseId = spouse.spouseIds[0] ?? null;
-        spouse.spouseRelationshipTypes[String(person.id)] = person.spouseRelationshipTypes[String(spouseId)] || person.relationshipType || "married";
-      }
-    }
 
     async function deleteSelected() {
       const target = people.find((item) => item.id === selectedId);
@@ -1950,7 +2366,7 @@
         okLabel: "削除"
       });
       if (!confirmed) return;
-      const previous = snapshot();
+      pushHistory();
       const id = target.id;
       people = people
         .filter((person) => person.id !== id)
@@ -1963,7 +2379,7 @@
           parentRelationshipTypes: Object.fromEntries(Object.entries(person.parentRelationshipTypes).filter(([parentId]) => Number(parentId) !== id))
         }));
       selectedId = people[0]?.id ?? null;
-      persistAndRender(`「${targetName}」を削除しました。`, { undo: previous });
+      persistAndRender(`「${targetName}」を削除しました。`, { undo: true });
     }
 
     function persistAndRender(message, options = {}) {
@@ -1980,6 +2396,7 @@
       selectPerson(selectedId);
       renderPeopleList();
       renderBackups();
+      updateHistoryButtons();
       jsonEditor.value = JSON.stringify(people, null, 2);
       summary.textContent = `${people.length}人`;
       const generations = [...new Set(people.map((person) => person.generation))].sort((a, b) => a - b);
@@ -1997,21 +2414,20 @@
         row.classList.toggle("is-selected", person.id === selectedId);
         const avatar = document.createElement("div");
         avatar.className = "person-avatar";
-        avatar.textContent = String(person.id);
+        avatar.textContent = [...(person.name || "?")][0];
         const text = document.createElement("div");
         const title = document.createElement("div");
         title.className = "person-title";
         title.textContent = person.name || `#${person.id}`;
         const meta = document.createElement("div");
         meta.className = "person-meta";
-        meta.textContent = `${person.relation ? `続柄:${person.relation} / ` : ""}世代:${person.generation} / 配偶者:${person.spouseIds.join(",") || "-"} / 親:${person.parentIds.join(",") || "-"}`;
+        meta.textContent = describeRelations(person, people);
         const edit = document.createElement("button");
         edit.type = "button";
         edit.className = "secondary";
         edit.append(createIcon("ic-edit"), "編集");
         edit.setAttribute("aria-label", `${person.name || person.id}を編集`);
         edit.addEventListener("click", () => {
-          selectedId = person.id;
           selectPerson(person.id);
           renderPeopleList();
         });
@@ -2097,15 +2513,19 @@
     }
 
     function resetManualLayout() {
-      const previous = snapshot();
+      pushHistory();
       people = people.map((person) => ({ ...person, position: null }));
-      persistAndRender("自動配置に戻しました。", { undo: previous });
+      persistAndRender("自動配置に戻しました。", { undo: true });
     }
 
     function handlePointerDown(event) {
-      if (!manualLayoutMode) return;
       const hit = hitTestPerson(canvasPoint(event));
       if (!hit) return;
+      if (hit.person.id !== selectedId) {
+        selectPerson(hit.person.id);
+        renderPeopleList();
+      }
+      if (!manualLayoutMode) return;
       draggedPersonId = hit.person.id;
       const point = canvasPoint(event);
       dragOffset = { x: point.x - hit.pos.x, y: point.y - hit.pos.y };
@@ -2135,10 +2555,10 @@
     }
 
     function applyJson() {
-      const previous = snapshot();
       try {
         const parsed = JSON.parse(jsonEditor.value);
-        applyPeopleData(parsed, "JSONを反映しました。", { undo: previous });
+        pushHistory();
+        applyPeopleData(parsed, "JSONを反映しました。", { undo: true });
       } catch (error) {
         setStatus(`JSONエラー: ${error.message}`, { tone: "error" });
       }
@@ -2164,10 +2584,10 @@
     async function importJsonFile(event) {
       const file = event.target.files?.[0];
       if (!file) return;
-      const previous = snapshot();
       try {
         const parsed = JSON.parse(await file.text());
-        applyPeopleData(parsed, "JSONを読み込みました。", { undo: previous });
+        pushHistory();
+        applyPeopleData(parsed, "JSONを読み込みました。", { undo: true });
       } catch (error) {
         setStatus(`JSON読込エラー: ${error.message}`, { tone: "error" });
       } finally {
@@ -2199,10 +2619,10 @@
         okLabel: "置き換える"
       });
       if (!confirmed) return;
-      const previous = snapshot();
+      pushHistory();
       people = normalizePeople(structuredClone(samplePeople));
       selectedId = people[0].id;
-      persistAndRender("サンプルデータを復元しました。", { undo: previous });
+      persistAndRender("サンプルデータを復元しました。", { undo: true });
     });
     document.getElementById("fitBtn").addEventListener("click", renderPreview);
     paperSizeSelect.addEventListener("change", () => {
@@ -2212,11 +2632,25 @@
       setStatus(`${getPaperSpec().label}横に変更しました。`);
     });
     document.getElementById("printBtn").addEventListener("click", () => window.print());
-    undoBtn.addEventListener("click", () => {
-      if (!pendingUndo) return;
-      const saved = pendingUndo;
-      pendingUndo = null;
-      restoreSnapshot(saved);
+    undoBtn.addEventListener("click", undo);
+    undoActionBtn.addEventListener("click", undo);
+    redoActionBtn.addEventListener("click", redo);
+    document.getElementById("addParentBtn").addEventListener("click", addParent);
+    document.getElementById("addSpouseBtn").addEventListener("click", addSpouse);
+
+    // 文字入力中は、ブラウザ本来の取り消しを邪魔しない。
+    document.addEventListener("keydown", (event) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && target.matches("input, textarea, select")) return;
+      const key = event.key.toLowerCase();
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        if (!undo()) setStatus("元に戻せる操作がありません。");
+      } else if ((key === "z" && event.shiftKey) || key === "y") {
+        event.preventDefault();
+        if (!redo()) setStatus("やり直せる操作がありません。");
+      }
     });
     window.addEventListener("resize", renderPreview);
 

@@ -67,17 +67,29 @@ required = [
     'function confirmAction',
     'async function deleteSelected',
     'function pushBackup',
-    'function restoreSnapshot',
     'function checkStorage',
     'familytree.backups',
+    # 編集UI（ID非表示・人物ピッカー・項目ごとのエラー・Undo/Redo）
+    'id="pickerDialog"',
+    'id="addParentBtn"',
+    'id="addSpouseBtn"',
+    'id="nameError"',
+    'id="undoActionBtn"',
+    'id="redoActionBtn"',
+    'function openPersonPicker',
+    'function applyPersonEdit',
+    'function validateDraft',
+    'function suggestedGeneration',
+    'function pushHistory',
+    'function redo()',
 ]
 missing = [item for item in required if item not in html]
 if missing:
     raise SystemExit(f"smoke test: missing required markers: {missing}")
 
-for forbidden in ("jspdf", "jsPDF", "generatePdfLink", "pdfBtn"):
+for forbidden in ("jspdf", "jsPDF", "generatePdfLink", "pdfBtn", 'id="personId"'):
     if forbidden in html:
-        raise SystemExit(f"smoke test: forbidden PDF reference remains: {forbidden}")
+        raise SystemExit(f"smoke test: 使わなくなった要素が残っています: {forbidden}")
 
 print("smoke test passed: index.html served, JSON/relation/print/safety UI present, PDF references absent")
 PY

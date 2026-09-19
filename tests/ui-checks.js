@@ -25,6 +25,16 @@
     return true;
   };
 
+  // Canvas上の人物枠の中心を、画面座標に直してクリックする。
+  // buildLayout はページ側のスクリプトが持つ関数をそのまま使う。
+  function selectPersonOnCanvas(canvas, rect, person) {
+    const layout = buildLayout(JSON.parse(document.getElementById("jsonEditor").value), canvas.width, canvas.height);
+    const pos = layout.positions.get(person.id);
+    const x = rect.left + (pos.x / canvas.width) * rect.width;
+    const y = rect.top + (pos.y / canvas.height) * rect.height;
+    canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: x, clientY: y, pointerId: 1 }));
+  }
+
   try {
     const start = count();
 
@@ -41,31 +51,133 @@
     document.querySelector(".person-row button").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 10, clientY: 10 }));
     ok("リップルが出る", !!document.querySelector(".ripple"));
 
-    // --- duplicate IDs must not silently overwrite anybody ---
-    $("newBtn").click();
-    $("personId").value = "2";
-    $("name").value = "上書きテスト";
-    $("generation").value = "0";
-    $("saveBtn").click();
-    ok("重複IDを拒否する", count() === start && !$("jsonEditor").value.includes("上書きテスト"));
-    ok("重複IDの持ち主を知らせる", $("status").textContent.includes("使用中"), $("status").textContent);
-    ok("エラー配色になる", $("snackbar").classList.contains("is-error"));
-
-    // --- a genuinely unused ID still saves ---
+    // --- 新規追加はIDを自分で採番し、既存の人物を書き換えない ---
     $("newBtn").click();
     $("name").value = "新規テスト";
     $("generation").value = "0";
     $("saveBtn").click();
-    ok("新規追加はできる", count() === start + 1 && $("jsonEditor").value.includes("新規テスト"), String(count()));
+    await wait(20);
+    ok("新規追加できる", count() === start + 1 && $("jsonEditor").value.includes("新規テスト"), String(count()));
+    const added = JSON.parse($("jsonEditor").value).find((item) => item.name === "新規テスト");
+    ok("IDは自動で採番される", Number.isInteger(added?.id) && added.id > 0, JSON.stringify(added?.id));
+    ok("既存の人物は無事", JSON.parse($("jsonEditor").value).filter((item) => item.id === 1).length === 1);
+    ok("ID入力欄は無い", !$("personId"));
 
-    // --- editing the selected person updates in place ---
+    // --- 氏名が空なら項目ごとにエラーを出す ---
+    $("newBtn").click();
+    $("name").value = "   ";
+    $("saveBtn").click();
+    await wait(20);
+    ok("氏名なしでは保存しない", count() === start + 1, String(count()));
+    ok("氏名欄にエラーが出る", !$("nameError").hidden && $("nameError").textContent.includes("氏名"), $("nameError").textContent);
+    ok("氏名欄が不正表示になる", $("name").classList.contains("is-invalid"));
+    $("name").value = "エラー解消テスト";
+    $("saveBtn").click();
+    await wait(20);
+    ok("直せば保存できる", count() === start + 2, String(count()));
+    ok("エラー表示が消える", $("nameError").hidden && !$("name").classList.contains("is-invalid"));
+
+    // --- 親は一覧から選び、世代は自動で決まる ---
+    $("newBtn").click();
+    $("name").value = "子テスト";
+    $("addParentBtn").click();
+    ok("親ピッカーが開く", await waitFor(() => $("pickerDialog").open));
+    const parentRow = $("pickerList").querySelector(".picker-row");
+    const parentName = parentRow.querySelector(".picker-name").textContent;
+    parentRow.click();
+    await waitFor(() => !$("pickerDialog").open);
+    await wait(20);
+    ok("親が関係リストに入る", $("parentList").querySelectorAll(".relation-row").length === 1);
+    ok("親は名前で表示される", $("parentList").querySelector(".relation-name").textContent === parentName, parentName);
+    const parentGeneration = JSON.parse($("jsonEditor").value).find((item) => item.name === parentName).generation;
+    ok("世代が親+1になる", Number($("generation").value) === parentGeneration + 1, $("generation").value);
+
+    // --- 検索で候補を絞り込める ---
+    $("addSpouseBtn").click();
+    await waitFor(() => $("pickerDialog").open);
+    const allRows = $("pickerList").querySelectorAll(".picker-row").length;
+    const candidateName = $("pickerList").querySelector(".picker-name").textContent;
+    $("pickerSearch").value = candidateName;
+    $("pickerSearch").dispatchEvent(new Event("input", { bubbles: true }));
+    await wait(10);
+    const filtered = $("pickerList").querySelectorAll(".picker-row").length;
+    ok("検索で候補が絞られる", filtered > 0 && filtered < allRows, `${filtered}/${allRows} (${candidateName})`);
+    ok("既に親にした人物は候補から外れる", ![...$("pickerList").querySelectorAll(".picker-name")].some((el) => el.textContent === parentName));
+    $("pickerCancelBtn").click();
+    await waitFor(() => !$("pickerDialog").open);
+    ok("キャンセルすれば増えない", $("spouseList").querySelectorAll(".relation-row").length === 0);
+
+    // --- 配偶者は相手側にも登録される ---
+    $("addSpouseBtn").click();
+    await waitFor(() => $("pickerDialog").open);
+    const spouseRow = $("pickerList").querySelector(".picker-row");
+    const spouseName = spouseRow.querySelector(".picker-name").textContent;
+    spouseRow.click();
+    await waitFor(() => !$("pickerDialog").open);
+    $("spouseList").querySelector("select").value = "divorced";
+    $("spouseList").querySelector("select").dispatchEvent(new Event("change", { bubbles: true }));
+    $("saveBtn").click();
+    await wait(20);
+    const saved = JSON.parse($("jsonEditor").value);
+    const child = saved.find((item) => item.name === "子テスト");
+    const spouse = saved.find((item) => item.name === spouseName);
+    ok("配偶者が保存される", child.spouseIds.includes(spouse.id));
+    ok("相手側にもリンクが張られる", spouse.spouseIds.includes(child.id));
+    ok("関係の種別も相手側に伝わる", spouse.spouseRelationshipTypes[String(child.id)] === "divorced", JSON.stringify(spouse.spouseRelationshipTypes));
+
+    // --- 関係は外せる ---
+    $("parentList").querySelector(".icon-button").click();
+    await wait(10);
+    ok("親を外せる", $("parentList").querySelectorAll(".relation-row").length === 0);
+
+    // --- 一覧はIDではなく名前で関係を示す ---
+    const meta = document.querySelector(".person-row .person-meta").textContent;
+    ok("一覧に世代が出る", meta.includes("世代"), meta);
+    ok("一覧にIDを出さない", !meta.includes("配偶者:-") && !/配偶者: ?\d+/.test(meta), meta);
+
+    // --- Canvasの人物をクリックすると編集対象になる ---
+    const canvas = $("treeCanvas");
+    const rect = canvas.getBoundingClientRect();
+    const target = JSON.parse($("jsonEditor").value)[0];
+    selectPersonOnCanvas(canvas, rect, target);
+    await wait(20);
+    ok("Canvasクリックで人物を選べる", $("name").value === target.name, `${$("name").value} / ${target.name}`);
+
+    // --- Undo / Redo ---
+    const beforeUndo = count();
+    $("newBtn").click();
+    $("name").value = "取り消しテスト";
+    $("generation").value = "0";
+    $("saveBtn").click();
+    await wait(20);
+    ok("追加でUndoボタンが有効になる", !$("undoActionBtn").disabled);
+    $("undoActionBtn").click();
+    await wait(20);
+    ok("Undoで追加が取り消される", count() === beforeUndo && !$("jsonEditor").value.includes("取り消しテスト"), String(count()));
+    ok("Redoボタンが有効になる", !$("redoActionBtn").disabled);
+    $("redoActionBtn").click();
+    await wait(20);
+    ok("Redoでやり直せる", $("jsonEditor").value.includes("取り消しテスト"));
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, bubbles: true }));
+    await wait(20);
+    ok("Ctrl+Zでも戻せる", !$("jsonEditor").value.includes("取り消しテスト"));
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true, bubbles: true }));
+    await wait(20);
+    ok("Ctrl+Shift+Zでやり直せる", $("jsonEditor").value.includes("取り消しテスト"));
+    $("undoActionBtn").click();
+    await wait(20);
+
+    // --- 一覧から選ぶとその場で更新される ---
     document.querySelector(".person-row button").click();
-    const selected = Number($("personId").value);
+    await wait(10);
     ok("編集で行が選択される", document.querySelectorAll(".person-row.is-selected").length === 1);
+    const selected = JSON.parse($("jsonEditor").value).find((item) => item.name === $("name").value).id;
+    const beforeRename = count();
     $("name").value = "改名テスト";
     $("saveBtn").click();
+    await wait(20);
     ok("その場で更新される", JSON.parse($("jsonEditor").value).find((item) => item.id === selected)?.name === "改名テスト");
-    ok("行が増えない", count() === start + 1);
+    ok("行が増えない", count() === beforeRename, String(count()));
 
     // --- delete asks first; cancelling changes nothing ---
     const before = count();

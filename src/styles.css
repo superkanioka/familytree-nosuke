@@ -255,6 +255,49 @@ button[aria-pressed="true"] {
   }
 }
 
+/* ===== Icon buttons / small tonal buttons ===== */
+.icon-button {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
+  color: var(--md-on-surface-variant);
+  background: transparent;
+}
+
+.icon-button:hover {
+  background: transparent;
+  box-shadow: none;
+}
+
+.icon-button .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.tonal-sm {
+  min-height: 32px;
+  padding: 4px 14px 4px 10px;
+  color: var(--md-on-secondary-container);
+  background: var(--md-secondary-container);
+  font-size: 13px;
+}
+
+.tonal-sm:hover {
+  background: var(--md-secondary-container);
+}
+
+button:disabled {
+  opacity: 0.38;
+  cursor: default;
+  box-shadow: none;
+}
+
+button:disabled:hover::before,
+button:disabled:active::before {
+  opacity: 0;
+}
+
 /* ===== Layout ===== */
 .app {
   min-height: 100vh;
@@ -702,6 +745,143 @@ dialog::backdrop {
   min-height: 32px;
   padding: 4px 12px;
   font-size: 12px;
+}
+
+/* ===== Relation editors (parents / spouses) ===== */
+.relation-field {
+  margin: 16px 0;
+}
+
+.relation-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.relation-label {
+  color: var(--md-on-surface-variant);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.relation-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.relation-list:empty::after {
+  content: "未設定";
+  display: block;
+  padding: 6px 2px;
+  color: var(--md-on-surface-variant);
+  font-size: 12px;
+}
+
+.relation-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 6px 6px 12px;
+  border-radius: var(--md-shape-md);
+  background: var(--md-surface-container);
+}
+
+.relation-row .relation-name {
+  font-size: 13px;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.relation-row select {
+  min-height: 36px;
+  width: auto;
+  padding: 6px 30px 6px 10px;
+  font-size: 12px;
+  background-color: var(--md-surface-container-lowest);
+}
+
+/* ===== Field errors ===== */
+.field-error {
+  color: var(--md-error);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+input.is-invalid,
+select.is-invalid {
+  border-color: var(--md-error);
+  box-shadow: inset 0 0 0 1px var(--md-error);
+}
+
+/* ===== Person picker ===== */
+.picker-dialog {
+  width: min(92vw, 420px);
+}
+
+.picker-search {
+  margin: 16px 0 8px;
+}
+
+.picker-list {
+  display: grid;
+  gap: 2px;
+  max-height: min(50vh, 320px);
+  overflow: auto;
+  margin: 0 -8px;
+  padding: 0 8px;
+}
+
+.picker-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 12px;
+  border-radius: var(--md-shape-md);
+  color: var(--md-on-surface);
+  background: transparent;
+  text-align: left;
+  justify-content: start;
+  font-weight: 500;
+}
+
+.picker-row:hover {
+  background: var(--md-surface-container-highest);
+  box-shadow: none;
+}
+
+.picker-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.picker-meta {
+  display: block;
+  margin-top: 2px;
+  color: var(--md-on-surface-variant);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.picker-empty {
+  margin: 16px 0 0;
+  color: var(--md-on-surface-variant);
+  font-size: 13px;
+}
+
+.picker-empty[hidden] {
+  display: none;
 }
 
 /* ===== People list (M3 list items) ===== */

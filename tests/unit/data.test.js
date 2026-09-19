@@ -2,15 +2,16 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
-  buildParentRelationshipTypes,
-  buildSpouseRelationshipTypes,
+  applyPersonEdit,
+  createDraft,
+  describeRelations,
   nextId,
   normalizePeople,
   parentKey,
-  parseParentIds,
-  parseSpouseIds,
   samplePeople,
   suggestRelationFor,
+  suggestedGeneration,
+  validateDraft,
   yearStart
 } from "../../src/data.js";
 
@@ -79,42 +80,6 @@ describe("normalizePeople", () => {
   });
 });
 
-describe("入力欄の解釈", () => {
-  it("親IDは2人までで、不正値を無視する", () => {
-    assert.deepEqual(parseParentIds("1, 2 ,3"), [1, 2]);
-    assert.deepEqual(parseParentIds("ふたり, 2"), [2]);
-    assert.deepEqual(parseParentIds(""), []);
-  });
-
-  it("配偶者IDは重複を除いて複数受け取る", () => {
-    assert.deepEqual(parseSpouseIds("2,5,2"), [2, 5]);
-    assert.deepEqual(parseSpouseIds(""), []);
-    assert.deepEqual(parseSpouseIds(null), []);
-  });
-});
-
-describe("関係種別の組み立て", () => {
-  it("選んだ種別を全員に適用する", () => {
-    assert.deepEqual(buildSpouseRelationshipTypes("2,3", "divorced"), { 2: "divorced", 3: "divorced" });
-    assert.deepEqual(buildParentRelationshipTypes("1,2", "adopted"), { 1: "adopted", 2: "adopted" });
-  });
-
-  it("mixed のときは既存の種別を保持し、未設定は既定値にする", () => {
-    assert.deepEqual(
-      buildSpouseRelationshipTypes("2,3", "mixed", { 2: "widowed" }),
-      { 2: "widowed", 3: "married" }
-    );
-    assert.deepEqual(
-      buildParentRelationshipTypes("1,2", "mixed", { 1: "step" }),
-      { 1: "step", 2: "biological" }
-    );
-  });
-
-  it("入力が空なら空のまま", () => {
-    assert.deepEqual(buildSpouseRelationshipTypes("", "married"), {});
-  });
-});
-
 describe("小さなヘルパー", () => {
   it("nextId は最大ID+1、空なら1", () => {
     assert.equal(nextId([{ id: 3 }, { id: 7 }, { id: 5 }]), 8);
@@ -167,5 +132,164 @@ describe("suggestRelationFor", () => {
   it("必ず画面に出す文言を添える", () => {
     const suggestion = suggestRelationFor({ people, currentId: 9, parentIds: [1], hasSpouse: false, generation: 1 });
     assert.match(suggestion.message, /続柄候補/);
+  });
+});
+
+describe("編集フォームの下書き", () => {
+  const people = normalizePeople([
+    { id: 1, name: "父", generation: 0, spouseIds: [2], spouseRelationshipTypes: { 2: "married" } },
+    { id: 2, name: "母", generation: 0, spouseIds: [1], spouseRelationshipTypes: { 1: "married" } },
+    {
+      id: 3,
+      name: "子",
+      generation: 1,
+      parentIds: [1, 2],
+      parentRelationshipTypes: { 1: "biological", 2: "adopted" }
+    }
+  ]);
+
+  it("新規は空の下書きを返す", () => {
+    const draft = createDraft(null);
+    assert.equal(draft.id, null);
+    assert.equal(draft.name, "");
+    assert.deepEqual(draft.parents, []);
+    assert.deepEqual(draft.spouses, []);
+  });
+
+  it("既存の人物から関係と種別を取り出す", () => {
+    const draft = createDraft(people.find((person) => person.id === 3));
+    assert.equal(draft.id, 3);
+    assert.deepEqual(draft.parents, [
+      { id: 1, type: "biological" },
+      { id: 2, type: "adopted" }
+    ]);
+  });
+
+  it("旧データの relationshipType を配偶者の既定として拾う", () => {
+    const [legacy] = normalizePeople([{ id: 9, name: "旧", spouseIds: [1], relationshipType: "divorced" }]);
+    assert.deepEqual(createDraft(legacy).spouses, [{ id: 1, type: "divorced" }]);
+  });
+
+  it("氏名と世代を検証する", () => {
+    assert.deepEqual(validateDraft({ name: "有効", generation: 0 }), {});
+    assert.ok(validateDraft({ name: "   ", generation: 0 }).name);
+    assert.ok(validateDraft({ name: "有効", generation: -1 }).generation);
+    assert.ok(validateDraft({ name: "有効", generation: "せだい" }).generation);
+  });
+
+  it("親から世代を決める（親がいなければ null）", () => {
+    assert.equal(suggestedGeneration(people, [1, 2]), 1);
+    assert.equal(suggestedGeneration(people, [3]), 2);
+    assert.equal(suggestedGeneration(people, []), null);
+    assert.equal(suggestedGeneration(people, [999]), null);
+  });
+
+  it("関係はIDではなく名前で説明する", () => {
+    const text = describeRelations(people.find((person) => person.id === 3), people);
+    assert.match(text, /親: 父、母/);
+    assert.doesNotMatch(text, /#/);
+  });
+});
+
+describe("applyPersonEdit", () => {
+  const base = normalizePeople([
+    { id: 1, name: "父", generation: 0 },
+    { id: 2, name: "母", generation: 0 },
+    { id: 3, name: "子", generation: 1, parentIds: [1] }
+  ]);
+
+  it("IDのない下書きは採番して追加する", () => {
+    const result = applyPersonEdit(base, {
+      id: null, name: "新人", relation: "", years: "", generation: 2, parents: [], spouses: []
+    });
+    assert.equal(result.id, 4);
+    assert.equal(result.people.length, 4);
+    assert.equal(result.people.find((person) => person.id === 4).name, "新人");
+  });
+
+  it("既存の人物は上書きし、件数を増やさない", () => {
+    const result = applyPersonEdit(base, {
+      id: 3, name: "子（改名）", relation: "長男", years: "1980-", generation: 1,
+      parents: [{ id: 1, type: "biological" }], spouses: []
+    });
+    assert.equal(result.people.length, 3);
+    assert.equal(result.people.find((person) => person.id === 3).name, "子（改名）");
+  });
+
+  it("配偶者のリンクを相手側にも張る", () => {
+    const result = applyPersonEdit(base, {
+      id: 1, name: "父", relation: "", years: "", generation: 0,
+      parents: [], spouses: [{ id: 2, type: "married" }]
+    });
+    const mother = result.people.find((person) => person.id === 2);
+    assert.deepEqual(mother.spouseIds, [1]);
+    assert.equal(mother.spouseRelationshipTypes["1"], "married");
+    assert.equal(mother.spouseId, 1, "旧形式のspouseIdも揃える");
+  });
+
+  it("配偶者を外すと相手側のリンクも消える", () => {
+    const linked = applyPersonEdit(base, {
+      id: 1, name: "父", relation: "", years: "", generation: 0,
+      parents: [], spouses: [{ id: 2, type: "married" }]
+    }).people;
+    const unlinked = applyPersonEdit(linked, {
+      id: 1, name: "父", relation: "", years: "", generation: 0, parents: [], spouses: []
+    }).people;
+    assert.deepEqual(unlinked.find((person) => person.id === 2).spouseIds, []);
+    assert.equal(unlinked.find((person) => person.id === 2).spouseId, null);
+  });
+
+  it("関係の種別変更は相手側にも伝わる", () => {
+    const married = applyPersonEdit(base, {
+      id: 1, name: "父", relation: "", years: "", generation: 0,
+      parents: [], spouses: [{ id: 2, type: "married" }]
+    }).people;
+    const divorced = applyPersonEdit(married, {
+      id: 1, name: "父", relation: "", years: "", generation: 0,
+      parents: [], spouses: [{ id: 2, type: "divorced" }]
+    }).people;
+    assert.equal(divorced.find((person) => person.id === 2).spouseRelationshipTypes["1"], "divorced");
+  });
+
+  it("自分自身や重複は関係から取り除く", () => {
+    const result = applyPersonEdit(base, {
+      id: 3, name: "子", relation: "", years: "", generation: 1,
+      parents: [{ id: 3, type: "biological" }, { id: 1, type: "biological" }, { id: 1, type: "adopted" }],
+      spouses: [{ id: 3, type: "married" }]
+    });
+    const child = result.people.find((person) => person.id === 3);
+    assert.deepEqual(child.parentIds, [1]);
+    assert.deepEqual(child.spouseIds, []);
+  });
+
+  it("親は2人までに切り詰める", () => {
+    const result = applyPersonEdit(base, {
+      id: 3, name: "子", relation: "", years: "", generation: 1,
+      parents: [{ id: 1, type: "biological" }, { id: 2, type: "biological" }, { id: 4, type: "step" }],
+      spouses: []
+    });
+    assert.equal(result.people.find((person) => person.id === 3).parentIds.length, 2);
+  });
+
+  it("手動配置と拡張フィールドを保持する", () => {
+    const positioned = normalizePeople([
+      { id: 1, name: "配置済み", generation: 0, position: { x: 0.3, y: 0.4 } }
+    ]);
+    positioned[0].relationshipMeta = { memo: "残す" };
+    const result = applyPersonEdit(positioned, {
+      id: 1, name: "配置済み", relation: "", years: "", generation: 0, parents: [], spouses: []
+    });
+    const person = result.people.find((item) => item.id === 1);
+    assert.deepEqual(person.position, { x: 0.3, y: 0.4 });
+    assert.deepEqual(person.relationshipMeta, { memo: "残す" });
+  });
+
+  it("元の配列を書き換えない", () => {
+    const before = structuredClone(base);
+    applyPersonEdit(base, {
+      id: 1, name: "書き換え", relation: "", years: "", generation: 0,
+      parents: [], spouses: [{ id: 2, type: "married" }]
+    });
+    assert.deepEqual(base, before);
   });
 });

@@ -16,5 +16,8 @@
   <symbol id="ic-print" viewBox="0 0 24 24"><path d="M7 9.5V4h10v5.5"/><path d="M7 18.5H5.5a2 2 0 0 1-2-2v-4.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2V16.5a2 2 0 0 1-2 2H17"/><rect x="7" y="15" width="10" height="5.5" rx="1.2"/></symbol>
   <symbol id="ic-warning" viewBox="0 0 24 24"><path d="M12 4.2 2.8 20h18.4z"/><path d="M12 10v4.2M12 17.2v.6"/></symbol>
   <symbol id="ic-history" viewBox="0 0 24 24"><path d="M4.1 12a7.9 7.9 0 1 0 2.3-5.6"/><polyline points="4.1 4.2 4.1 9 8.9 9"/><polyline points="12 7.8 12 12 15.2 13.8"/></symbol>
+  <symbol id="ic-undo" viewBox="0 0 24 24"><polyline points="8.5 6 4.5 10 8.5 14"/><path d="M4.5 10h9a5.5 5.5 0 0 1 0 11H9"/></symbol>
+  <symbol id="ic-redo" viewBox="0 0 24 24"><polyline points="15.5 6 19.5 10 15.5 14"/><path d="M19.5 10h-9a5.5 5.5 0 0 0 0 11H15"/></symbol>
+  <symbol id="ic-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
   <symbol id="ic-edit" viewBox="0 0 24 24"><path d="M4.5 19.5h4L19.2 8.8a2 2 0 0 0-2.9-2.9L5.5 16.5z"/><path d="M14.8 7.4l2.8 2.8"/></symbol>
 </svg>

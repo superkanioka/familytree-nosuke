@@ -64,11 +64,6 @@ export function normalizePeople(input) {
     .sort((a, b) => a.generation - b.generation || a.id - b.id);
 }
 
-export function toNullableNumber(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
 
 function normalizeParentRelationshipTypes(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
@@ -102,37 +97,9 @@ export function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-export function parseParentIds(value) {
-  return value
-    .split(",")
-    .map((part) => Number(part.trim()))
-    .filter((id) => Number.isFinite(id) && id > 0)
-    .slice(0, 2);
-}
 
-export function parseSpouseIds(value) {
-  return normalizeSpouseIds(String(value || "").split(","), null);
-}
 
-export function buildSpouseRelationshipTypes(value, selectedType, previousTypes = {}) {
-  const spouseIds = parseSpouseIds(value);
-  if (selectedType === "mixed") {
-    return Object.fromEntries(spouseIds.map((spouseId) => [
-      String(spouseId), previousTypes[String(spouseId)] || "married"
-    ]));
-  }
-  return Object.fromEntries(spouseIds.map((spouseId) => [String(spouseId), selectedType]));
-}
 
-export function buildParentRelationshipTypes(value, selectedType, previousTypes = {}) {
-  const parentIds = parseParentIds(value);
-  if (selectedType === "mixed") {
-    return Object.fromEntries(parentIds.map((parentId) => [
-      String(parentId), previousTypes[String(parentId)] || "biological"
-    ]));
-  }
-  return Object.fromEntries(parentIds.map((parentId) => [String(parentId), selectedType]));
-}
 
 export function parentKey(parentIds) {
   return parentIds.slice().sort((a, b) => a - b).join(",");
@@ -164,4 +131,129 @@ export function suggestRelationFor({ people, currentId, parentIds, hasSpouse, ge
     relation: generation === 0 ? "先祖" : "本人",
     message: "続柄候補を入れました。必要なら自由に修正できます。"
   };
+}
+
+export const SPOUSE_RELATIONSHIP_LABELS = {
+  married: "結婚",
+  divorced: "離婚",
+  widowed: "死別",
+  partner: "パートナー"
+};
+
+export const PARENT_RELATIONSHIP_LABELS = {
+  biological: "実親",
+  adopted: "養親",
+  step: "継親",
+  unknown: "不明"
+};
+
+// 編集フォームが持つ下書き。IDは新規なら null で、保存時に採番する。
+export function createDraft(person = null) {
+  if (!person) {
+    return { id: null, name: "", relation: "", years: "", generation: 0, parents: [], spouses: [] };
+  }
+  return {
+    id: person.id,
+    name: person.name,
+    relation: person.relation,
+    years: person.years,
+    generation: person.generation,
+    parents: person.parentIds.map((id) => ({
+      id,
+      type: person.parentRelationshipTypes[String(id)] || "biological"
+    })),
+    spouses: person.spouseIds.map((id) => ({
+      id,
+      type: person.spouseRelationshipTypes[String(id)] || person.relationshipType || "married"
+    }))
+  };
+}
+
+export function validateDraft(draft) {
+  const errors = {};
+  if (!String(draft.name ?? "").trim()) errors.name = "氏名を入力してください。";
+  const generation = Number(draft.generation);
+  if (!Number.isFinite(generation) || generation < 0) errors.generation = "世代は0以上の数字で入力してください。";
+  return errors;
+}
+
+// 親を選ぶと世代が決まる。親がいなければ null（利用者の入力を尊重する）。
+export function suggestedGeneration(people, parentIds) {
+  const generations = parentIds
+    .map((id) => people.find((person) => person.id === id)?.generation)
+    .filter((value) => Number.isFinite(value));
+  return generations.length ? Math.max(...generations) + 1 : null;
+}
+
+function normalizeRelationEntries(entries, selfId, fallbackType, limit = Infinity) {
+  const seen = new Set();
+  const result = [];
+  for (const entry of entries ?? []) {
+    const id = Number(entry?.id);
+    if (!Number.isFinite(id) || id <= 0 || id === selfId || seen.has(id)) continue;
+    seen.add(id);
+    result.push({ id, type: entry?.type || fallbackType });
+    if (result.length >= limit) break;
+  }
+  return result;
+}
+
+// 下書きを people に反映する。配偶者は相手側のリンクもここで揃える。
+export function applyPersonEdit(people, draft) {
+  const id = draft.id ?? nextId(people);
+  const previous = people.find((person) => person.id === id) ?? null;
+  const parents = normalizeRelationEntries(draft.parents, id, "biological", 2);
+  const spouses = normalizeRelationEntries(draft.spouses, id, "married");
+
+  const person = {
+    id,
+    name: String(draft.name ?? "").trim(),
+    relation: String(draft.relation ?? "").trim(),
+    years: String(draft.years ?? "").trim(),
+    generation: Number(draft.generation),
+    position: previous?.position ?? null,
+    spouseId: spouses[0]?.id ?? null,
+    spouseIds: spouses.map((entry) => entry.id),
+    spouseRelationshipTypes: Object.fromEntries(spouses.map((entry) => [String(entry.id), entry.type])),
+    parentIds: parents.map((entry) => entry.id),
+    parentRelationshipTypes: Object.fromEntries(parents.map((entry) => [String(entry.id), entry.type])),
+    relationshipType: spouses[0]?.type ?? "married",
+    relationshipMeta: previous?.relationshipMeta ?? {}
+  };
+
+  const next = people.map((item) => ({
+    ...item,
+    spouseIds: [...item.spouseIds],
+    spouseRelationshipTypes: { ...item.spouseRelationshipTypes }
+  }));
+  const index = next.findIndex((item) => item.id === id);
+  if (index >= 0) next[index] = person;
+  else next.push(person);
+
+  const spouseIdSet = new Set(person.spouseIds);
+  for (const other of next) {
+    if (other.id === id) continue;
+    const linked = other.spouseIds.includes(id);
+    if (spouseIdSet.has(other.id)) {
+      if (!linked) other.spouseIds.push(id);
+      other.spouseRelationshipTypes[String(id)] = person.spouseRelationshipTypes[String(other.id)];
+    } else if (linked) {
+      other.spouseIds = other.spouseIds.filter((spouseId) => spouseId !== id);
+      delete other.spouseRelationshipTypes[String(id)];
+    }
+    other.spouseId = other.spouseIds[0] ?? null;
+  }
+
+  return { people: normalizePeople(next), id };
+}
+
+// 人物一覧に出す説明。IDではなく名前で関係を示す。
+export function describeRelations(person, people) {
+  const nameOf = (id) => people.find((item) => item.id === id)?.name || `#${id}`;
+  const parts = [`第${person.generation}世代`];
+  if (person.relation) parts.unshift(person.relation);
+  if (person.years) parts.push(person.years);
+  if (person.spouseIds.length) parts.push(`配偶者: ${person.spouseIds.map(nameOf).join("、")}`);
+  if (person.parentIds.length) parts.push(`親: ${person.parentIds.map(nameOf).join("、")}`);
+  return parts.join(" / ");
 }
