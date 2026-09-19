@@ -59,6 +59,10 @@ const pickerEmpty = document.getElementById("pickerEmpty");
 const pickerTitle = document.getElementById("pickerTitle");
 const pickerCancelBtn = document.getElementById("pickerCancelBtn");
 const undoActionBtn = document.getElementById("undoActionBtn");
+const sidebar = document.getElementById("editorSidebar");
+const sheetToggle = document.getElementById("sheetToggle");
+const installBtn = document.getElementById("installBtn");
+const smallScreen = window.matchMedia("(max-width: 920px)");
 const redoActionBtn = document.getElementById("redoActionBtn");
 
 const canvas = document.getElementById("treeCanvas");
@@ -102,6 +106,7 @@ const confirmOkBtn = document.getElementById("confirmOkBtn");
 const confirmCancelBtn = document.getElementById("confirmCancelBtn");
 
 let lastJsonUrl = "";
+let installPrompt = null;
 
 // 編集中の下書き。IDは新規なら null で、保存時に採番する。
 let draft = createDraft(null);
@@ -714,6 +719,7 @@ function handlePointerDown(event) {
   if (hit.person.id !== selectedId) {
     selectPerson(hit.person.id);
     renderPeopleList();
+    if (isSheetCollapsed()) setSheetOpen(true);
   }
   if (!manualLayoutMode) return;
   draggedPersonId = hit.person.id;
@@ -759,6 +765,62 @@ function applyPeopleData(parsed, message, options = {}) {
   people = normalizePeople(parsed);
   selectedId = people[0]?.id ?? null;
   persistAndRender(message, options);
+}
+
+// 印刷と同じ用紙比率で、画面表示より高い解像度の画像を作る（約150dpi）。
+const PNG_PIXELS_PER_MM = 6;
+
+function exportPng() {
+  const spec = getPaperSpec();
+  const target = document.createElement("canvas");
+  target.width = Math.round(spec.widthMm * PNG_PIXELS_PER_MM);
+  target.height = Math.round(spec.heightMm * PNG_PIXELS_PER_MM);
+  drawFamilyTree(target, people, treeColors());
+  const fileName = `familytree-${new Date().toISOString().slice(0, 10)}.png`;
+
+  target.toBlob(async (blob) => {
+    if (!blob) {
+      setStatus("画像を作れませんでした。", { tone: "error" });
+      return;
+    }
+    const file = new File([blob], fileName, { type: "image/png" });
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: "家系図" });
+        setStatus("画像を共有しました。");
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+        // 共有できない端末ではダウンロードに切り替える
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 10000);
+    setStatus(`${spec.label}横の画像を保存しました。`);
+  }, "image/png");
+}
+
+// 小さい画面では、サイドバーをボトムシートとして開閉する。
+function setSheetOpen(open) {
+  sidebar.classList.toggle("is-open", open);
+  sheetToggle.setAttribute("aria-expanded", String(open));
+}
+
+function isSheetCollapsed() {
+  return smallScreen.matches && !sidebar.classList.contains("is-open");
+}
+
+function registerServiceWorker() {
+  // file:// で開いたときは登録できないので、何もしない（アプリは従来どおり動く）。
+  if (!("serviceWorker" in navigator)) return;
+  if (location.protocol !== "http:" && location.protocol !== "https:") return;
+  navigator.serviceWorker.register("sw.js").catch((error) => {
+    console.warn("familytree: Service Workerを登録できませんでした", error);
+  });
 }
 
 function exportJson() {
@@ -822,6 +884,27 @@ paperSizeSelect.addEventListener("change", () => {
   setStatus(`${getPaperSpec().label}横に変更しました。`);
 });
 document.getElementById("printBtn").addEventListener("click", () => window.print());
+document.getElementById("exportPngBtn").addEventListener("click", exportPng);
+sheetToggle.addEventListener("click", () => setSheetOpen(!sidebar.classList.contains("is-open")));
+smallScreen.addEventListener("change", (event) => setSheetOpen(!event.matches));
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  installPrompt = event;
+  installBtn.hidden = false;
+});
+installBtn.addEventListener("click", async () => {
+  if (!installPrompt) return;
+  installBtn.hidden = true;
+  const prompt = installPrompt;
+  installPrompt = null;
+  await prompt.prompt();
+});
+window.addEventListener("appinstalled", () => {
+  installPrompt = null;
+  installBtn.hidden = true;
+  setStatus("ホーム画面に追加しました。");
+});
 undoBtn.addEventListener("click", undo);
 undoActionBtn.addEventListener("click", undo);
 redoActionBtn.addEventListener("click", redo);
@@ -845,6 +928,8 @@ document.addEventListener("keydown", (event) => {
 window.addEventListener("resize", renderPreview);
 
 attachRipples();
+setSheetOpen(!smallScreen.matches);
+registerServiceWorker();
 renderAll();
 if (!checkStorage()) {
   setStatus("このブラウザではデータを保存できません（プライベートモードなどの可能性があります）。JSON書き出しでバックアップしてください。", { tone: "error", persistent: true });

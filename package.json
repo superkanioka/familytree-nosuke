@@ -6,6 +6,6 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node --test \"tests/unit/*.test.js\" && node build.mjs --check && bash tests/smoke.sh && bash tests/browser.sh"
+    "test": "node --test \"tests/unit/*.test.js\" && node build.mjs --check && bash tests/smoke.sh && bash tests/browser.sh && node tests/pwa.mjs"
   }
 }

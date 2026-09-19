@@ -250,6 +250,47 @@
       ok("バックアップから復元できる", $("status").textContent.includes("バックアップから復元"), $("status").textContent);
     }
 
+    // --- 画像として書き出せる（共有が使えない環境ではダウンロード） ---
+    const createdBlobs = [];
+    const realCreate = URL.createObjectURL;
+    URL.createObjectURL = (blob) => {
+      createdBlobs.push(blob);
+      return realCreate.call(URL, blob);
+    };
+    const realClick = HTMLAnchorElement.prototype.click;
+    let downloadName = null;
+    HTMLAnchorElement.prototype.click = function patched() {
+      if (this.download) downloadName = this.download;
+    };
+    $("exportPngBtn").click();
+    await waitFor(() => downloadName !== null, 3000);
+    URL.createObjectURL = realCreate;
+    HTMLAnchorElement.prototype.click = realClick;
+    ok("PNGとして書き出す", downloadName?.endsWith(".png"), String(downloadName));
+    ok("画像のBlobを作る", createdBlobs.at(-1)?.type === "image/png", createdBlobs.at(-1)?.type);
+    ok("中身のある画像になる", createdBlobs.at(-1)?.size > 1000, String(createdBlobs.at(-1)?.size));
+    ok("書き出しを知らせる", $("status").textContent.includes("画像"), $("status").textContent);
+
+    // --- 編集シートは開閉できる（小さい画面ではボトムシートになる） ---
+    const sidebar = $("editorSidebar");
+    const wasOpen = sidebar.classList.contains("is-open");
+    $("sheetToggle").click();
+    ok("シートを切り替えられる", sidebar.classList.contains("is-open") !== wasOpen);
+    ok("開閉状態を伝える", $("sheetToggle").getAttribute("aria-expanded") === String(sidebar.classList.contains("is-open")));
+    $("sheetToggle").click();
+    ok("元の状態に戻せる", sidebar.classList.contains("is-open") === wasOpen);
+
+    // --- file:// では Service Worker を登録しない ---
+    ok("file://ではSWを登録しない", !navigator.serviceWorker?.controller);
+    ok("インストールボタンは既定で隠れている",
+      $("installBtn").hidden && getComputedStyle($("installBtn")).display === "none",
+      getComputedStyle($("installBtn")).display);
+    ok("hidden属性が見た目にも効く",
+      ["jsonDownloadBox", "backupBox", "nameError"].every((id) => {
+        const element = $(id);
+        return !element.hidden || getComputedStyle(element).display === "none";
+      }));
+
     // --- broken JSON reports and keeps the stored data ---
     const keep = count();
     $("jsonEditor").value = "{ broken";

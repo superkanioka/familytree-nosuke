@@ -11,7 +11,8 @@ A3横向きを初期値に、A4横向きも選べるクライアントサイド�
 5. `用紙サイズ` で `A3横`（初期値）または `A4横` を選びます。選択はブラウザの `localStorage` に保存され、未保存時や不正値はA3に戻ります。
 6. `JSON書き出し` で保存用リンクを作り、`JSON読込` でバックアップを読み込めます。
 7. `配置調整` を押すと、Canvas上の人物枠をドラッグして位置を調整できます。位置は自動的に保存され、`自動配置に戻す` で全員を自動配置へ戻せます。
-8. `印刷` を押すと、選択した用紙サイズでブラウザの印刷画面が開きます。PDFとして保存する場合は、ブラウザの印刷画面で保存先にPDFを選びます。
+8. `画像で保存` を押すと、用紙サイズのPNG（約150dpi）を書き出します。共有に対応した端末では共有シートが開きます。
+9. `印刷` を押すと、選択した用紙サイズでブラウザの印刷画面が開きます。PDFとして保存する場合は、ブラウザの印刷画面で保存先にPDFを選びます。
 
 Canvas上の人物枠をクリックすると、その人物を編集できます。操作はツールバーの `元に戻す` / `やり直す`（`Ctrl+Z` / `Ctrl+Shift+Z`）で取り消せます。
 
@@ -23,28 +24,47 @@ python -m http.server 8000
 
 その後、ブラウザで `http://localhost:8000/` を開きます。
 
+## アプリとして使う（PWA）
+
+`index.html` をそのまま開く使い方は今までどおりです。加えて、https（またはローカルサーバー）で配信すると**インストールできるアプリ**として使えます。
+
+- Android/Chromeでは、ツールバーに `アプリとして追加` が出ます。ホーム画面から単独ウィンドウで起動します。
+- iOS/Safariでは、共有メニューの「ホーム画面に追加」で同じことができます。
+- 一度開けば**オフラインでも起動**します（Service Workerが本体とアイコンをキャッシュします）。
+- 更新は、オンラインなら開くたびに最新が取得されます。オフラインのときだけキャッシュを使います。
+
+### GitHub Pagesで配る
+
+`main` への push で `.github/workflows/pages.yml` がテストを通し、配布物（`index.html` / `manifest.webmanifest` / `sw.js` / `icons/`）だけを公開します。**初回だけ、リポジトリの Settings > Pages で Source を「GitHub Actions」に変更してください。**
+
+`file://` で開いた場合、Service Workerは登録されません（ブラウザの制約）。アプリの機能はすべて従来どおり動きます。
+
 ## ソース構成とビルド
 
-配布物は従来どおり `index.html` 1枚ですが、これは `src/` から生成しています。**`index.html` を直接編集しないでください。**
+配布物は `index.html`（1枚で完結）と、PWA用の `manifest.webmanifest` / `sw.js` / `icons/` です。これらは `src/` から生成しています。**生成物を直接編集しないでください。**
 
 ```
 src/
   index.template.html  HTMLの骨組み（{{styles}} {{icons}} {{script}} を埋める）
   styles.css           Material 3のスタイル
-  icons.svg            SVGアイコンのスプライト
-  data.js              人物データの正規化・入力値の解釈・続柄の推定（DOMなし）
+  icons.svg            画面内のSVGアイコンのスプライト
+  data.js              人物データの正規化・下書きの検証・続柄の推定（DOMなし）
   layout.js            世代ごとの自動配置（DOMなし）
   draw.js              Canvas描画（DOMなし、配色は引数で受け取る）
   app.js               DOM・localStorage・イベント配線
-build.mjs              src/ から index.html を生成する（依存パッケージなし）
+  manifest.webmanifest PWAのマニフェスト（そのまま配布物になる）
+  sw.template.js       Service Workerのひな形（キャッシュ名はビルド時に埋める）
+  app-icon.svg         アプリアイコンの元データ
+build.mjs              src/ から配布物を生成する（依存パッケージなし）
+tools/make-icons.sh    app-icon.svg から icons/*.png を作り直す（Chromiumが必要）
 ```
 
 ```bash
-node build.mjs           # index.html を生成する
-node build.mjs --check   # index.html が src/ と一致するか確認する
+node build.mjs           # index.html / manifest.webmanifest / sw.js を生成する
+node build.mjs --check   # 生成物が src/ と一致するか確認する
 ```
 
-`build.mjs` は各モジュールから `import` / `export` を取り除いて依存順に連結し、構文を検査してから差し込みます。生成した `index.html` はコミットするので、利用者は今までどおりファイルを開くだけで使えます。
+`build.mjs` は各モジュールから `import` / `export` を取り除いて依存順に連結し、構文を検査してから差し込みます。Service Workerのキャッシュ名は**配布物の内容のハッシュ**なので、中身が変われば必ず新しいキャッシュに切り替わります。生成物はコミットするので、利用者は今までどおりファイルを開くだけで使えます。
 
 ## テスト
 
@@ -52,19 +72,22 @@ node build.mjs --check   # index.html が src/ と一致するか確認する
 npm test
 ```
 
-次の4つを順に実行します。
+次の5つを順に実行します。
 
 1. `node --test "tests/unit/*.test.js"` — `data.js` / `layout.js` / `draw.js` のユニットテスト（55件）
-2. `node build.mjs --check` — `index.html` が `src/` から作り直した結果と一致するか
+2. `node build.mjs --check` — 生成物が `src/` から作り直した結果と一致するか
 3. `bash tests/smoke.sh` — 静的配信と必須UIの存在確認
-4. `bash tests/browser.sh` — ヘッドレスChromiumでの実操作（71件）
+4. `bash tests/browser.sh` — ヘッドレスChromiumでの実操作（81件）
+5. `node tests/pwa.mjs` — http配信でのPWA動作（23件）
 
 `draw.js` のテストはCanvasの代わりに呼び出しを記録するスタブを使います。`document` や `window` に触れているとNodeで例外になるため、描画ロジックがDOMから切り離されていることもここで担保しています。
+
+`tests/pwa.mjs` は生成物を一時フォルダへ並べて `python3 -m http.server` で配信し、ヘッドレスChromiumをDevToolsプロトコルで操作します（`--dump-dom` ではService Workerの登録完了を待てないため）。**配信サーバーを実際に停止してから読み込み直し**、それでもアプリが開けることまで確認します。
 
 ### テストの補足
 
 - `tests/smoke.sh` はNode.jsもChromiumも使わず、静的配信と必須UIの存在だけを確認します（`python3` のみ必要）。
-- `tests/browser.sh` はChromiumが見つからない場合スキップします。使うバイナリは `CHROME=/path/to/chrome bash tests/browser.sh` で指定できます。検証内容は `tests/ui-checks.js`（通常操作）と `tests/storage-checks.js`（保存できない環境）にあります。
+- `tests/browser.sh` と `tests/pwa.mjs` はChromiumが見つからない場合スキップします。使うバイナリは `CHROME=/path/to/chrome bash tests/browser.sh` で指定できます。検証内容は `tests/ui-checks.js`（通常操作）と `tests/storage-checks.js`（保存できない環境）にあります。
 - 見た目の最終確認は、Chromeなどで `index.html` か `http://127.0.0.1:8000/` を開いて行います。
 
 ## データを失わないための仕組み
@@ -106,6 +129,7 @@ UIはMaterial 3（Material You）のガイドラインに沿ったスタイル�
 - ツールバーはトップアプリバーとして固定表示し、人数・世代の情報はチップで表示します。
 - アイコンは外部フォントを使わず、`index.html` 内のSVGスプライト（`#ic-*`）で完結させています。オフラインでもそのまま開けます。
 - 親・配偶者はモーダルの人物ピッカー（検索付きリスト）で選びます。既に選んだ人物と自分自身は候補から外れます。
+- 920px以下では、家系図を主役にして編集フォームをボトムシートに畳みます。つまみをタップすると開き、Canvas上の人物をタップしたときも開きます。用紙は最低680px幅を保ち、横スクロールで読めるようにしています。
 - 入力エラーはM3のerror stateとsupporting textで、該当の入力欄に出します。
 - `prefers-reduced-motion` が有効な環境ではアニメーションを無効化します。
 - 印刷時はサイドバーとツールバーを非表示にし、用紙の角丸・影も外して用紙いっぱいに描画します。

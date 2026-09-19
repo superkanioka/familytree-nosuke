@@ -116,6 +116,11 @@
   box-sizing: border-box;
 }
 
+/* button などに display を指定しているので、hidden 属性を確実に効かせる */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   color: var(--md-on-surface);
@@ -314,6 +319,10 @@ button:disabled:active::before {
   flex-direction: column;
   gap: 16px;
   border-right: 1px solid var(--md-outline-variant);
+}
+
+.sheet-handle {
+  display: none;
 }
 
 .app-title {
@@ -608,10 +617,6 @@ textarea {
   }
 }
 
-.snackbar[hidden] {
-  display: none;
-}
-
 .snackbar .status {
   flex: 1 1 auto;
   margin: 0;
@@ -638,10 +643,6 @@ textarea {
 
 .snackbar.is-error .snackbar-action {
   color: var(--md-on-error-container);
-}
-
-.snackbar-action[hidden] {
-  display: none;
 }
 
 /* ===== Dialog (M3 basic dialog) ===== */
@@ -709,10 +710,6 @@ dialog::backdrop {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--md-outline-variant);
-}
-
-.backup-box[hidden] {
-  display: none;
 }
 
 .backup-list {
@@ -880,10 +877,6 @@ select.is-invalid {
   font-size: 13px;
 }
 
-.picker-empty[hidden] {
-  display: none;
-}
-
 /* ===== People list (M3 list items) ===== */
 .people-list {
   display: grid;
@@ -1007,17 +1000,74 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .sidebar {
-    border-right: 0;
-    border-bottom: 1px solid var(--md-outline-variant);
-  }
-
   .toolbar {
     position: static;
   }
 
   .canvas-wrap {
-    padding: 16px;
+    padding: 16px 16px 88px;
+  }
+
+  /* 用紙を画面幅まで縮めると文字が潰れるので、最低幅を持たせて横スクロールさせる */
+  .paper {
+    width: max(100%, 680px);
+  }
+
+  .sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 15;
+    max-height: 86vh;
+    padding: 0 16px 24px;
+    border: 0;
+    border-radius: var(--md-shape-xl) var(--md-shape-xl) 0 0;
+    background: var(--md-surface-container-low);
+    box-shadow: var(--md-elev-3);
+    transform: translateY(calc(100% - 56px));
+    transition: transform var(--md-dur-medium) var(--md-ease-emphasized);
+  }
+
+  .sidebar.is-open {
+    transform: none;
+  }
+
+  .sheet-handle {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    width: calc(100% + 32px);
+    margin: 0 -16px;
+    min-height: 56px;
+    padding: 8px 16px 12px;
+    border-radius: var(--md-shape-xl) var(--md-shape-xl) 0 0;
+    color: var(--md-on-surface);
+    background: var(--md-surface-container-low);
+  }
+
+  .sheet-handle:hover {
+    background: var(--md-surface-container-low);
+    box-shadow: none;
+  }
+
+  .sheet-grip {
+    width: 32px;
+    height: 4px;
+    border-radius: var(--md-shape-full);
+    background: var(--md-outline-variant);
+  }
+
+  .sheet-label {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .snackbar {
+    bottom: 72px;
   }
 }
 
@@ -1033,6 +1083,7 @@ textarea {
   .sidebar,
   .toolbar,
   .snackbar,
+  .sheet-handle,
   dialog {
     display: none;
   }

@@ -82,6 +82,15 @@ required = [
     'function suggestedGeneration',
     'function pushHistory',
     'function redo()',
+    # PWA（インストール・オフライン・画像書き出し・ボトムシート）
+    'manifest.webmanifest',
+    'apple-touch-icon',
+    'theme-color',
+    'function registerServiceWorker',
+    'function exportPng',
+    'id="exportPngBtn"',
+    'id="installBtn"',
+    'id="sheetToggle"',
 ]
 missing = [item for item in required if item not in html]
 if missing:

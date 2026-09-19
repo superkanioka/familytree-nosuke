@@ -4,6 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>家系図作成アプリ</title>
+  <meta name="description" content="A3横・A4横で印刷できる家系図を、ブラウザだけで作れます。">
+  <meta name="theme-color" content="#f4fbf8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0e1513" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="家系図">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <style>
 {{styles}}
   </style>
@@ -13,7 +21,11 @@
 {{icons}}
 
   <main class="app">
-    <aside class="sidebar">
+    <aside class="sidebar" id="editorSidebar">
+      <button type="button" class="sheet-handle" id="sheetToggle" aria-expanded="true" aria-controls="editorSidebar">
+        <span class="sheet-grip" aria-hidden="true"></span>
+        <span class="sheet-label">人物を編集</span>
+      </button>
       <div class="app-title">
         <span class="app-icon"><svg class="icon" aria-hidden="true"><use href="#ic-tree"/></svg></span>
         <div>
@@ -145,6 +157,8 @@
         <button type="button" class="secondary" id="fitBtn"><svg class="icon" aria-hidden="true"><use href="#ic-refresh"/></svg><span class="btn-label">再描画</span></button>
         <button type="button" class="secondary" id="manualLayoutBtn" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#ic-move"/></svg><span class="btn-label">配置調整</span></button>
         <button type="button" class="secondary" id="resetLayoutBtn"><svg class="icon" aria-hidden="true"><use href="#ic-restore"/></svg><span class="btn-label">自動配置に戻す</span></button>
+        <button type="button" class="secondary" id="exportPngBtn"><svg class="icon" aria-hidden="true"><use href="#ic-image"/></svg><span class="btn-label">画像で保存</span></button>
+        <button type="button" class="secondary" id="installBtn" hidden><svg class="icon" aria-hidden="true"><use href="#ic-install"/></svg><span class="btn-label">アプリとして追加</span></button>
         <button type="button" id="printBtn"><svg class="icon" aria-hidden="true"><use href="#ic-print"/></svg><span class="btn-label">印刷</span></button>
       </div>
       <div class="canvas-wrap">

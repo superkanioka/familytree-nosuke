@@ -40,13 +40,13 @@ if [[ -z "$chrome" ]]; then
   exit 0
 fi
 
-# $1 = page file, $2 = label
+# $1 = URL, $2 = label
 run_case() {
-  local page="$1" label="$2" results
+  local url="$1" label="$2" results
   # The dumped DOM contains both the rendered results and the test source, so
   # pick the first <pre id="testout"> block only.
-  results="$("$chrome" --headless --no-sandbox --disable-gpu --virtual-time-budget=15000 \
-    --dump-dom "file://$page" 2>/dev/null | python3 -c '
+  results="$("$chrome" --headless --no-sandbox --disable-gpu --virtual-time-budget=20000 \
+    --dump-dom "$url" 2>/dev/null | python3 -c '
 import html, re, sys
 
 dom = sys.stdin.read()
@@ -97,13 +97,15 @@ tmp.joinpath("storage.html").write_text(
     ),
     encoding="utf-8",
 )
+
 PY
 
 status=0
 echo "--- 通常の操作 ---"
-run_case "$tmp_dir/ui.html" "ui-checks" || status=1
+run_case "file://$tmp_dir/ui.html" "ui-checks" || status=1
 echo "--- 保存できない環境 ---"
-run_case "$tmp_dir/storage.html" "storage-checks" || status=1
+run_case "file://$tmp_dir/storage.html" "storage-checks" || status=1
+
 
 if [[ "$status" -eq 0 ]]; then
   echo "browser test passed"

@@ -5,6 +5,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>家系図作成アプリ</title>
+  <meta name="description" content="A3横・A4横で印刷できる家系図を、ブラウザだけで作れます。">
+  <meta name="theme-color" content="#f4fbf8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0e1513" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="家系図">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <style>
     /* ===== Material 3 (Material You) design tokens ===== */
     :root {
@@ -122,6 +130,11 @@
 
     * {
       box-sizing: border-box;
+    }
+
+    /* button などに display を指定しているので、hidden 属性を確実に効かせる */
+    [hidden] {
+      display: none !important;
     }
 
     body {
@@ -322,6 +335,10 @@
       flex-direction: column;
       gap: 16px;
       border-right: 1px solid var(--md-outline-variant);
+    }
+
+    .sheet-handle {
+      display: none;
     }
 
     .app-title {
@@ -616,10 +633,6 @@
       }
     }
 
-    .snackbar[hidden] {
-      display: none;
-    }
-
     .snackbar .status {
       flex: 1 1 auto;
       margin: 0;
@@ -646,10 +659,6 @@
 
     .snackbar.is-error .snackbar-action {
       color: var(--md-on-error-container);
-    }
-
-    .snackbar-action[hidden] {
-      display: none;
     }
 
     /* ===== Dialog (M3 basic dialog) ===== */
@@ -717,10 +726,6 @@
       margin-top: 16px;
       padding-top: 16px;
       border-top: 1px solid var(--md-outline-variant);
-    }
-
-    .backup-box[hidden] {
-      display: none;
     }
 
     .backup-list {
@@ -888,10 +893,6 @@
       font-size: 13px;
     }
 
-    .picker-empty[hidden] {
-      display: none;
-    }
-
     /* ===== People list (M3 list items) ===== */
     .people-list {
       display: grid;
@@ -1015,17 +1016,74 @@
         grid-template-columns: 1fr;
       }
 
-      .sidebar {
-        border-right: 0;
-        border-bottom: 1px solid var(--md-outline-variant);
-      }
-
       .toolbar {
         position: static;
       }
 
       .canvas-wrap {
-        padding: 16px;
+        padding: 16px 16px 88px;
+      }
+
+      /* 用紙を画面幅まで縮めると文字が潰れるので、最低幅を持たせて横スクロールさせる */
+      .paper {
+        width: max(100%, 680px);
+      }
+
+      .sidebar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 15;
+        max-height: 86vh;
+        padding: 0 16px 24px;
+        border: 0;
+        border-radius: var(--md-shape-xl) var(--md-shape-xl) 0 0;
+        background: var(--md-surface-container-low);
+        box-shadow: var(--md-elev-3);
+        transform: translateY(calc(100% - 56px));
+        transition: transform var(--md-dur-medium) var(--md-ease-emphasized);
+      }
+
+      .sidebar.is-open {
+        transform: none;
+      }
+
+      .sheet-handle {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: grid;
+        justify-items: center;
+        gap: 6px;
+        width: calc(100% + 32px);
+        margin: 0 -16px;
+        min-height: 56px;
+        padding: 8px 16px 12px;
+        border-radius: var(--md-shape-xl) var(--md-shape-xl) 0 0;
+        color: var(--md-on-surface);
+        background: var(--md-surface-container-low);
+      }
+
+      .sheet-handle:hover {
+        background: var(--md-surface-container-low);
+        box-shadow: none;
+      }
+
+      .sheet-grip {
+        width: 32px;
+        height: 4px;
+        border-radius: var(--md-shape-full);
+        background: var(--md-outline-variant);
+      }
+
+      .sheet-label {
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .snackbar {
+        bottom: 72px;
       }
     }
 
@@ -1041,6 +1099,7 @@
       .sidebar,
       .toolbar,
       .snackbar,
+      .sheet-handle,
       dialog {
         display: none;
       }
@@ -1089,6 +1148,8 @@
     <symbol id="ic-print" viewBox="0 0 24 24"><path d="M7 9.5V4h10v5.5"/><path d="M7 18.5H5.5a2 2 0 0 1-2-2v-4.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2V16.5a2 2 0 0 1-2 2H17"/><rect x="7" y="15" width="10" height="5.5" rx="1.2"/></symbol>
     <symbol id="ic-warning" viewBox="0 0 24 24"><path d="M12 4.2 2.8 20h18.4z"/><path d="M12 10v4.2M12 17.2v.6"/></symbol>
     <symbol id="ic-history" viewBox="0 0 24 24"><path d="M4.1 12a7.9 7.9 0 1 0 2.3-5.6"/><polyline points="4.1 4.2 4.1 9 8.9 9"/><polyline points="12 7.8 12 12 15.2 13.8"/></symbol>
+    <symbol id="ic-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="9.5" r="1.6"/><path d="M4 17l4.5-4.5 3.5 3.5 2.5-2.5 5.5 5"/></symbol>
+    <symbol id="ic-install" viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M12 7v7"/><polyline points="9 11 12 14 15 11"/></symbol>
     <symbol id="ic-undo" viewBox="0 0 24 24"><polyline points="8.5 6 4.5 10 8.5 14"/><path d="M4.5 10h9a5.5 5.5 0 0 1 0 11H9"/></symbol>
     <symbol id="ic-redo" viewBox="0 0 24 24"><polyline points="15.5 6 19.5 10 15.5 14"/><path d="M19.5 10h-9a5.5 5.5 0 0 0 0 11H15"/></symbol>
     <symbol id="ic-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
@@ -1096,7 +1157,11 @@
   </svg>
 
   <main class="app">
-    <aside class="sidebar">
+    <aside class="sidebar" id="editorSidebar">
+      <button type="button" class="sheet-handle" id="sheetToggle" aria-expanded="true" aria-controls="editorSidebar">
+        <span class="sheet-grip" aria-hidden="true"></span>
+        <span class="sheet-label">人物を編集</span>
+      </button>
       <div class="app-title">
         <span class="app-icon"><svg class="icon" aria-hidden="true"><use href="#ic-tree"/></svg></span>
         <div>
@@ -1228,6 +1293,8 @@
         <button type="button" class="secondary" id="fitBtn"><svg class="icon" aria-hidden="true"><use href="#ic-refresh"/></svg><span class="btn-label">再描画</span></button>
         <button type="button" class="secondary" id="manualLayoutBtn" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#ic-move"/></svg><span class="btn-label">配置調整</span></button>
         <button type="button" class="secondary" id="resetLayoutBtn"><svg class="icon" aria-hidden="true"><use href="#ic-restore"/></svg><span class="btn-label">自動配置に戻す</span></button>
+        <button type="button" class="secondary" id="exportPngBtn"><svg class="icon" aria-hidden="true"><use href="#ic-image"/></svg><span class="btn-label">画像で保存</span></button>
+        <button type="button" class="secondary" id="installBtn" hidden><svg class="icon" aria-hidden="true"><use href="#ic-install"/></svg><span class="btn-label">アプリとして追加</span></button>
         <button type="button" id="printBtn"><svg class="icon" aria-hidden="true"><use href="#ic-print"/></svg><span class="btn-label">印刷</span></button>
       </div>
       <div class="canvas-wrap">
@@ -1869,6 +1936,10 @@
     const pickerTitle = document.getElementById("pickerTitle");
     const pickerCancelBtn = document.getElementById("pickerCancelBtn");
     const undoActionBtn = document.getElementById("undoActionBtn");
+    const sidebar = document.getElementById("editorSidebar");
+    const sheetToggle = document.getElementById("sheetToggle");
+    const installBtn = document.getElementById("installBtn");
+    const smallScreen = window.matchMedia("(max-width: 920px)");
     const redoActionBtn = document.getElementById("redoActionBtn");
 
     const canvas = document.getElementById("treeCanvas");
@@ -1912,6 +1983,7 @@
     const confirmCancelBtn = document.getElementById("confirmCancelBtn");
 
     let lastJsonUrl = "";
+    let installPrompt = null;
 
     // 編集中の下書き。IDは新規なら null で、保存時に採番する。
     let draft = createDraft(null);
@@ -2524,6 +2596,7 @@
       if (hit.person.id !== selectedId) {
         selectPerson(hit.person.id);
         renderPeopleList();
+        if (isSheetCollapsed()) setSheetOpen(true);
       }
       if (!manualLayoutMode) return;
       draggedPersonId = hit.person.id;
@@ -2569,6 +2642,62 @@
       people = normalizePeople(parsed);
       selectedId = people[0]?.id ?? null;
       persistAndRender(message, options);
+    }
+
+    // 印刷と同じ用紙比率で、画面表示より高い解像度の画像を作る（約150dpi）。
+    const PNG_PIXELS_PER_MM = 6;
+
+    function exportPng() {
+      const spec = getPaperSpec();
+      const target = document.createElement("canvas");
+      target.width = Math.round(spec.widthMm * PNG_PIXELS_PER_MM);
+      target.height = Math.round(spec.heightMm * PNG_PIXELS_PER_MM);
+      drawFamilyTree(target, people, treeColors());
+      const fileName = `familytree-${new Date().toISOString().slice(0, 10)}.png`;
+
+      target.toBlob(async (blob) => {
+        if (!blob) {
+          setStatus("画像を作れませんでした。", { tone: "error" });
+          return;
+        }
+        const file = new File([blob], fileName, { type: "image/png" });
+        if (navigator.canShare?.({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], title: "家系図" });
+            setStatus("画像を共有しました。");
+            return;
+          } catch (error) {
+            if (error?.name === "AbortError") return;
+            // 共有できない端末ではダウンロードに切り替える
+          }
+        }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 10000);
+        setStatus(`${spec.label}横の画像を保存しました。`);
+      }, "image/png");
+    }
+
+    // 小さい画面では、サイドバーをボトムシートとして開閉する。
+    function setSheetOpen(open) {
+      sidebar.classList.toggle("is-open", open);
+      sheetToggle.setAttribute("aria-expanded", String(open));
+    }
+
+    function isSheetCollapsed() {
+      return smallScreen.matches && !sidebar.classList.contains("is-open");
+    }
+
+    function registerServiceWorker() {
+      // file:// で開いたときは登録できないので、何もしない（アプリは従来どおり動く）。
+      if (!("serviceWorker" in navigator)) return;
+      if (location.protocol !== "http:" && location.protocol !== "https:") return;
+      navigator.serviceWorker.register("sw.js").catch((error) => {
+        console.warn("familytree: Service Workerを登録できませんでした", error);
+      });
     }
 
     function exportJson() {
@@ -2632,6 +2761,27 @@
       setStatus(`${getPaperSpec().label}横に変更しました。`);
     });
     document.getElementById("printBtn").addEventListener("click", () => window.print());
+    document.getElementById("exportPngBtn").addEventListener("click", exportPng);
+    sheetToggle.addEventListener("click", () => setSheetOpen(!sidebar.classList.contains("is-open")));
+    smallScreen.addEventListener("change", (event) => setSheetOpen(!event.matches));
+
+    window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      installPrompt = event;
+      installBtn.hidden = false;
+    });
+    installBtn.addEventListener("click", async () => {
+      if (!installPrompt) return;
+      installBtn.hidden = true;
+      const prompt = installPrompt;
+      installPrompt = null;
+      await prompt.prompt();
+    });
+    window.addEventListener("appinstalled", () => {
+      installPrompt = null;
+      installBtn.hidden = true;
+      setStatus("ホーム画面に追加しました。");
+    });
     undoBtn.addEventListener("click", undo);
     undoActionBtn.addEventListener("click", undo);
     redoActionBtn.addEventListener("click", redo);
@@ -2655,6 +2805,8 @@
     window.addEventListener("resize", renderPreview);
 
     attachRipples();
+    setSheetOpen(!smallScreen.matches);
+    registerServiceWorker();
     renderAll();
     if (!checkStorage()) {
       setStatus("このブラウザではデータを保存できません（プライベートモードなどの可能性があります）。JSON書き出しでバックアップしてください。", { tone: "error", persistent: true });

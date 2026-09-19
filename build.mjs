@@ -1,10 +1,12 @@
 #!/usr/bin/env node
-// src/ から index.html を生成する。依存パッケージはなし。
+// src/ から配布物（index.html / manifest.webmanifest / sw.js）を生成する。依存パッケージはなし。
 //
-//   node build.mjs           index.html を書き出す
-//   node build.mjs --check   index.html が src/ と一致するか確認する（CI・テスト用）
+//   node build.mjs           生成物を書き出す
+//   node build.mjs --check   生成物が src/ と一致するか確認する（CI・テスト用）
 //
-// 配布物は従来どおり index.html 1枚なので、生成結果はコミットしておく。
+// index.html 1枚で完結する配布は変えていない。manifest と sw.js は
+// http(s) で配信したときだけ効く追加物で、file:// では無視される。
+import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +15,10 @@ const root = dirname(fileURLToPath(import.meta.url));
 
 // 読み込み順 = 依存順。import/export を取り除いて素直に連結する。
 const MODULES = ["src/data.js", "src/layout.js", "src/draw.js", "src/app.js"];
+
+// Service Worker が最初にキャッシュする一式。
+const SHELL_ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png"];
+const ICON_FILES = ["icons/icon-192.png", "icons/icon-512.png"];
 
 const BANNER = "<!-- このファイルは build.mjs が生成します。編集は src/ 側で行い、node build.mjs を実行してください。 -->";
 
@@ -66,17 +72,50 @@ async function buildHtml() {
   return html;
 }
 
-const target = join(root, "index.html");
-const html = await buildHtml();
+// 配布物の中身からキャッシュ名を作る。中身が変われば必ず別名になり、
+// 端末に古い版が残り続けることがない。
+function shellVersion(parts) {
+  const hash = createHash("sha256");
+  for (const part of parts) hash.update(part);
+  return hash.digest("hex").slice(0, 12);
+}
+
+async function buildOutputs() {
+  const html = await buildHtml();
+  const manifest = await readFile(join(root, "src/manifest.webmanifest"), "utf8");
+  const iconBytes = await Promise.all(ICON_FILES.map((file) => readFile(join(root, file))));
+  const version = shellVersion([html, manifest, ...iconBytes]);
+
+  const swTemplate = await readFile(join(root, "src/sw.template.js"), "utf8");
+  const sw = swTemplate
+    .replace("{{version}}", () => version)
+    .replace("{{assets}}", () => JSON.stringify(SHELL_ASSETS));
+  if (/\{\{\w+\}\}/.test(sw)) throw new Error("sw.js に未置換のプレースホルダがあります");
+
+  return new Map([
+    ["index.html", html],
+    ["manifest.webmanifest", manifest],
+    ["sw.js", sw]
+  ]);
+}
+
+const outputs = await buildOutputs();
 
 if (process.argv.includes("--check")) {
-  const current = await readFile(target, "utf8").catch(() => "");
-  if (current !== html) {
-    console.error("build check failed: index.html が src/ と一致しません。node build.mjs を実行してください。");
+  const stale = [];
+  for (const [file, content] of outputs) {
+    const current = await readFile(join(root, file), "utf8").catch(() => "");
+    if (current !== content) stale.push(file);
+  }
+  if (stale.length) {
+    console.error(`build check failed: ${stale.join(", ")} が src/ と一致しません。node build.mjs を実行してください。`);
     process.exit(1);
   }
-  console.log("build check passed: index.html は src/ と一致しています");
+  console.log(`build check passed: ${[...outputs.keys()].join(" / ")} は src/ と一致しています`);
 } else {
-  await writeFile(target, html);
-  console.log(`built index.html (${html.length} bytes)`);
+  for (const [file, content] of outputs) {
+    await writeFile(join(root, file), content);
+  }
+  const sizes = [...outputs].map(([file, content]) => `${file} (${content.length} bytes)`);
+  console.log(`built ${sizes.join(", ")}`);
 }
