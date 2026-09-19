@@ -21,6 +21,10 @@ function createStubCanvas(width = 1200, height = 849) {
     lineTo: record("lineTo"),
     quadraticCurveTo: record("quadraticCurveTo"),
     closePath: record("closePath"),
+    rect: record("rect"),
+    arc: record("arc"),
+    clip: record("clip"),
+    drawImage: record("drawImage"),
     stroke: record("stroke"),
     fill: record("fill"),
     fillText: record("fillText"),
@@ -147,5 +151,64 @@ describe("関係線のスタイル", () => {
   it("実親は実線で、渡した色を使う", () => {
     const style = getParentLineStyle(["biological"], { marriage: "#000000", child: "#abcdef" });
     assert.deepEqual(style, { color: "#abcdef", dash: [] });
+  });
+});
+
+describe("人物枠の描き分け", () => {
+  const draw = (person, extra = {}) => {
+    const { canvas, calls, assigned } = createStubCanvas();
+    const people = normalizePeople([{ generation: 0, ...person }]);
+    const layout = drawFamilyTree(canvas, people, DEFAULT_COLORS, extra.images ?? null);
+    return { calls, assigned, layout };
+  };
+
+  it("男性は四角、女性は丸で示す", () => {
+    const male = draw({ id: 1, name: "男", gender: "male" });
+    const female = draw({ id: 1, name: "女", gender: "female" });
+    const unknown = draw({ id: 1, name: "未設定" });
+    assert.ok(male.calls.some((call) => call.name === "rect"), "男性に rect が無い");
+    assert.ok(female.calls.some((call) => call.name === "arc"), "女性に arc が無い");
+    assert.ok(!unknown.calls.some((call) => call.name === "rect" || call.name === "arc"), "未設定に記号が出ている");
+  });
+
+  it("故人は地色を変える", () => {
+    const alive = draw({ id: 1, name: "存命", years: "1948-" });
+    const dead = draw({ id: 1, name: "故人", years: "1888-1962" });
+    assert.ok(alive.assigned.fillStyle.includes("#f2f9f7"), alive.assigned.fillStyle.join(","));
+    assert.ok(dead.assigned.fillStyle.includes("#eceeed"), dead.assigned.fillStyle.join(","));
+  });
+
+  it("生没年が無い故人には「故人」と書く", () => {
+    const { calls } = draw({ id: 1, name: "名前だけ", deceased: true });
+    const texts = calls.filter((call) => call.name === "fillText").map((call) => call.args[0]);
+    assert.ok(texts.includes("故人"), texts.join(","));
+  });
+
+  it("備考があれば枠に書く", () => {
+    const { calls } = draw({ id: 1, name: "備考あり", memo: "東京在住" });
+    const texts = calls.filter((call) => call.name === "fillText").map((call) => call.args[0]);
+    assert.ok(texts.includes("東京在住"), texts.join(","));
+  });
+
+  it("写真は読み込み済みの画像があるときだけ描く", () => {
+    const person = { id: 1, name: "写真あり", photo: "data:image/png;base64,ab" };
+    const withoutImage = draw(person);
+    assert.ok(!withoutImage.calls.some((call) => call.name === "drawImage"), "画像が無いのに描いている");
+
+    const image = { width: 160, height: 120 };
+    const withImage = draw(person, { images: new Map([[1, image]]) });
+    const drawn = withImage.calls.find((call) => call.name === "drawImage");
+    assert.ok(drawn, "写真を描いていない");
+    assert.equal(drawn.args[0], image);
+  });
+
+  it("縦横比を保ったまま円に収める", () => {
+    const image = { width: 200, height: 100 };
+    const { calls } = draw(
+      { id: 1, name: "横長", photo: "data:image/png;base64,ab" },
+      { images: new Map([[1, image]]) }
+    );
+    const [, , , width, height] = calls.find((call) => call.name === "drawImage").args;
+    assert.ok(Math.abs(width / height - 2) < 1e-6, `${width} x ${height}`);
   });
 });

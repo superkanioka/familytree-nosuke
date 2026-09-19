@@ -1,6 +1,6 @@
 // このファイルは build.mjs が src/sw.template.js から生成します。
 // キャッシュ名のバージョンは配布物の内容から作るので、中身が変われば必ず入れ替わります。
-const CACHE_NAME = "familytree-a27692a15103";
+const CACHE_NAME = "familytree-a6fed5693584";
 const ASSETS = ["./","./index.html","./manifest.webmanifest","./icons/icon-192.png","./icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {

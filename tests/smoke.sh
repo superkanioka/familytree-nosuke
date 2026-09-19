@@ -91,6 +91,17 @@ required = [
     'id="exportPngBtn"',
     'id="installBtn"',
     'id="sheetToggle"',
+    # 性別・故人・備考・写真・用紙バリエーション
+    'id="gender"',
+    'id="deceased"',
+    'id="memo"',
+    'id="photoInput"',
+    'function drawGenderMark',
+    'function drawPhoto',
+    'function hasEndYear',
+    'A3縦',
+    'B4横',
+    'MAX_PHOTO_LENGTH',
 ]
 missing = [item for item in required if item not in html]
 if missing:

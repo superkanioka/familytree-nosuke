@@ -6,7 +6,12 @@ export function buildLayout(sourcePeople, width, height) {
   const sorted = normalizePeople(sourcePeople);
   const personMap = new Map(sorted.map((person) => [person.id, person]));
   const generations = [...new Set(sorted.map((person) => person.generation))].sort((a, b) => a - b);
-  const box = { w: 156, h: 72 };
+  // 写真や備考がある家系図では、枠を縦に広げて収める
+  const content = {
+    photos: sorted.some((person) => Boolean(person.photo)),
+    memos: sorted.some((person) => Boolean(person.memo))
+  };
+  const box = { w: 156, h: 72 + (content.photos ? 46 : 0) + (content.memos ? 16 : 0) };
   const coupleGap = 18;
   const unitGap = 46;
   const margin = 78;
@@ -50,15 +55,22 @@ export function buildLayout(sourcePeople, width, height) {
     let cursor = -totalWidth / 2;
     const y = margin + generations.indexOf(generation) * yGap;
     for (const unit of units) {
-      const start = cursor;
-      unit.center = start + unit.width / 2;
+      unit.center = cursor + unit.width / 2;
       unit.y = y;
-      unit.people.forEach((unitPerson, index) => {
-        positions.set(unitPerson.id, { x: start + box.w / 2 + index * (box.w + coupleGap), y });
-      });
       cursor += unit.width + unitGap;
     }
     unitsByGeneration.set(generation, units);
+  }
+
+  alignFamilies(sorted, generations, unitsByGeneration, unitGap);
+
+  for (const units of unitsByGeneration.values()) {
+    for (const unit of units) {
+      const start = unit.center - unit.width / 2;
+      unit.people.forEach((unitPerson, index) => {
+        positions.set(unitPerson.id, { x: start + box.w / 2 + index * (box.w + coupleGap), y: unit.y });
+      });
+    }
   }
 
   const rawBounds = getBounds([...positions.values()], box);
@@ -80,7 +92,70 @@ export function buildLayout(sourcePeople, width, height) {
     });
   }
 
-  return { people: sorted, personMap, positions: scaled, generations, box: scaledBox, scale, unitsByGeneration };
+  return { people: sorted, personMap, positions: scaled, generations, box: scaledBox, scale, unitsByGeneration, content };
+}
+
+// 親のまとまりを子の真ん中へ、子のまとまりを親の真ん中へ寄せる往復を数回くり返す。
+// 左右の順番は動かさないので、線の交差が増えることはない。
+function alignFamilies(people, generations, unitsByGeneration, unitGap) {
+  if (generations.length < 2) return;
+
+  const unitOf = new Map();
+  for (const units of unitsByGeneration.values()) {
+    for (const unit of units) {
+      for (const person of unit.people) unitOf.set(person.id, unit);
+    }
+  }
+
+  const childUnits = new Map();
+  const parentUnits = new Map();
+  for (const child of people) {
+    const childUnit = unitOf.get(child.id);
+    for (const parentId of child.parentIds) {
+      const parentUnit = unitOf.get(parentId);
+      if (!parentUnit || !childUnit || parentUnit === childUnit) continue;
+      if (!childUnits.has(parentUnit)) childUnits.set(parentUnit, new Set());
+      childUnits.get(parentUnit).add(childUnit);
+      if (!parentUnits.has(childUnit)) parentUnits.set(childUnit, new Set());
+      parentUnits.get(childUnit).add(parentUnit);
+    }
+  }
+
+  const relatedOf = (map) => (unit) => [...(map.get(unit) ?? [])];
+  for (let pass = 0; pass < 6; pass += 1) {
+    // 先に「子を親の下へ」、最後に「親を子の上へ」。家系図は親が子の真ん中に
+    // 来ている方が読みやすいので、締めくくりを下から上の調整にしている。
+    for (let index = 1; index < generations.length; index += 1) {
+      alignGeneration(unitsByGeneration.get(generations[index]), relatedOf(parentUnits), unitGap);
+    }
+    for (let index = generations.length - 2; index >= 0; index -= 1) {
+      alignGeneration(unitsByGeneration.get(generations[index]), relatedOf(childUnits), unitGap);
+    }
+  }
+}
+
+function alignGeneration(units, relatedOf, unitGap) {
+  if (!units || units.length === 0) return;
+
+  const desired = units.map((unit) => {
+    const related = relatedOf(unit);
+    if (!related.length) return unit.center;
+    return related.reduce((sum, other) => sum + other.center, 0) / related.length;
+  });
+
+  // 順番を保ったまま、重なる分だけ右へ押し出す
+  const placed = desired.slice();
+  for (let index = 1; index < placed.length; index += 1) {
+    const minCenter = placed[index - 1] + units[index - 1].width / 2 + unitGap + units[index].width / 2;
+    if (placed[index] < minCenter) placed[index] = minCenter;
+  }
+
+  // 押し出した分だけ右に寄るので、狙いの中心に合わせて戻す
+  const mean = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
+  const shift = mean(desired) - mean(placed);
+  units.forEach((unit, index) => {
+    unit.center = placed[index] + shift;
+  });
 }
 
 function getBounds(points, box) {

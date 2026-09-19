@@ -76,6 +76,37 @@
               <span class="field-error" id="generationError" hidden></span>
             </label>
           </div>
+          <div class="grid-2">
+            <label>
+              性別
+              <select id="gender"></select>
+            </label>
+            <label class="checkbox-field">
+              表示
+              <span class="checkbox-row">
+                <input id="deceased" type="checkbox">
+                <span>故人として表示</span>
+              </span>
+            </label>
+          </div>
+          <label>
+            備考
+            <input id="memo" type="text" placeholder="例: 東京在住">
+          </label>
+          <div class="relation-field">
+            <div class="relation-head">
+              <span class="relation-label">写真</span>
+              <span class="photo-actions">
+                <button type="button" class="tonal-sm" id="choosePhotoBtn"><svg class="icon" aria-hidden="true"><use href="#ic-image"/></svg>選ぶ</button>
+                <button type="button" class="icon-button" id="removePhotoBtn" title="写真を外す" aria-label="写真を外す" hidden><svg class="icon" aria-hidden="true"><use href="#ic-close"/></svg></button>
+              </span>
+            </div>
+            <div class="photo-preview" id="photoPreview">
+              <span class="photo-empty" id="photoEmpty">未設定</span>
+              <img id="photoImage" alt="選択中の写真" hidden>
+            </div>
+            <input id="photoInput" type="file" accept="image/*" hidden>
+          </div>
           <div class="relation-field">
             <div class="relation-head">
               <span class="relation-label">親</span>
@@ -149,10 +180,7 @@
         <span class="spacer"></span>
         <label class="toolbar-size">
           用紙サイズ
-          <select id="paperSize">
-            <option value="a3">A3横</option>
-            <option value="a4">A4横</option>
-          </select>
+          <select id="paperSize"></select>
         </label>
         <button type="button" class="secondary" id="fitBtn"><svg class="icon" aria-hidden="true"><use href="#ic-refresh"/></svg><span class="btn-label">再描画</span></button>
         <button type="button" class="secondary" id="manualLayoutBtn" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#ic-move"/></svg><span class="btn-label">配置調整</span></button>

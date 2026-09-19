@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  MAX_PHOTO_LENGTH,
+  PAPER_SIZES,
   applyPersonEdit,
   createDraft,
   describeRelations,
@@ -291,5 +293,101 @@ describe("applyPersonEdit", () => {
       parents: [], spouses: [{ id: 2, type: "married" }]
     });
     assert.deepEqual(base, before);
+  });
+});
+
+describe("性別・故人・備考・写真", () => {
+  it("知らない性別は未設定として扱う", () => {
+    assert.equal(normalizePeople([{ id: 1, name: "A", gender: "male" }])[0].gender, "male");
+    assert.equal(normalizePeople([{ id: 1, name: "A", gender: "でたらめ" }])[0].gender, "unknown");
+    assert.equal(normalizePeople([{ id: 1, name: "A" }])[0].gender, "unknown");
+  });
+
+  it("生没年から故人かどうかを推測する", () => {
+    assert.equal(normalizePeople([{ id: 1, name: "A", years: "1888-1962" }])[0].deceased, true);
+    assert.equal(normalizePeople([{ id: 1, name: "A", years: "1888〜1962" }])[0].deceased, true);
+    assert.equal(normalizePeople([{ id: 1, name: "A", years: "1948-" }])[0].deceased, false);
+    assert.equal(normalizePeople([{ id: 1, name: "A", years: "" }])[0].deceased, false);
+  });
+
+  it("明示された故人指定は推測より優先する", () => {
+    assert.equal(normalizePeople([{ id: 1, name: "A", years: "1888-1962", deceased: false }])[0].deceased, false);
+    assert.equal(normalizePeople([{ id: 1, name: "A", years: "1948-", deceased: true }])[0].deceased, true);
+  });
+
+  it("写真はデータURLだけ受け入れる", () => {
+    const photo = "data:image/jpeg;base64,abcd";
+    assert.equal(normalizePeople([{ id: 1, name: "A", photo }])[0].photo, photo);
+    for (const bad of ["https://example.com/a.png", "javascript:alert(1)", "", 42, null, {}]) {
+      assert.equal(normalizePeople([{ id: 1, name: "A", photo: bad }])[0].photo, null, JSON.stringify(bad));
+    }
+  });
+
+  it("大きすぎる写真は捨てる（localStorageを守る）", () => {
+    const huge = "data:image/jpeg;base64," + "a".repeat(MAX_PHOTO_LENGTH);
+    assert.equal(normalizePeople([{ id: 1, name: "A", photo: huge }])[0].photo, null);
+  });
+
+  it("備考は前後の空白を落とす", () => {
+    assert.equal(normalizePeople([{ id: 1, name: "A", memo: "  東京在住  " }])[0].memo, "東京在住");
+  });
+
+  it("下書きにも引き継ぐ", () => {
+    const [person] = normalizePeople([
+      { id: 1, name: "A", gender: "female", years: "1930-2005", memo: "メモ", photo: "data:image/png;base64,ab" }
+    ]);
+    const draft = createDraft(person);
+    assert.equal(draft.gender, "female");
+    assert.equal(draft.deceased, true);
+    assert.equal(draft.memo, "メモ");
+    assert.equal(draft.photo, "data:image/png;base64,ab");
+  });
+
+  it("保存しても失われない", () => {
+    const people = normalizePeople([{ id: 1, name: "A", generation: 0 }]);
+    const result = applyPersonEdit(people, {
+      id: 1, name: "A", relation: "", years: "1930-2005", generation: 0,
+      gender: "male", deceased: true, memo: "覚書", photo: "data:image/png;base64,ab",
+      parents: [], spouses: []
+    });
+    const saved = result.people[0];
+    assert.equal(saved.gender, "male");
+    assert.equal(saved.deceased, true);
+    assert.equal(saved.memo, "覚書");
+    assert.equal(saved.photo, "data:image/png;base64,ab");
+  });
+
+  it("一覧の説明に性別と故人を添える", () => {
+    const people = normalizePeople([{ id: 1, name: "A", gender: "female", years: "1930-2005" }]);
+    const text = describeRelations(people[0], people);
+    assert.match(text, /女性/);
+    assert.match(text, /故人/);
+  });
+});
+
+describe("用紙サイズ", () => {
+  it("横と縦の両方を持つ", () => {
+    const orientations = new Set(Object.values(PAPER_SIZES).map((spec) => spec.orientation));
+    assert.ok(orientations.has("landscape"));
+    assert.ok(orientations.has("portrait"));
+  });
+
+  it("縦向きは幅より高さが大きい", () => {
+    for (const spec of Object.values(PAPER_SIZES)) {
+      const portrait = spec.heightMm > spec.widthMm;
+      assert.equal(spec.orientation === "portrait", portrait, spec.label);
+    }
+  });
+
+  it("比率は寸法と一致する", () => {
+    for (const spec of Object.values(PAPER_SIZES)) {
+      assert.ok(Math.abs(spec.ratio - spec.widthMm / spec.heightMm) < 1e-9, spec.label);
+    }
+  });
+
+  it("印刷用の用紙名を持つ", () => {
+    for (const spec of Object.values(PAPER_SIZES)) {
+      assert.match(spec.pageSize, /^(A3|A4|B4)$/, spec.label);
+    }
   });
 });

@@ -5,7 +5,8 @@ import { buildLayout } from "./layout.js";
 export const DEFAULT_COLORS = { marriage: "#8f4b53", child: "#3f4947" };
 
 
-export function drawFamilyTree(targetCanvas, sourcePeople, colors = DEFAULT_COLORS) {
+// images は id → 描画できる画像（HTMLImageElement など）。読み込み済みのものだけ渡す。
+export function drawFamilyTree(targetCanvas, sourcePeople, colors = DEFAULT_COLORS, images = null) {
   const ctx = targetCanvas.getContext("2d");
   const width = targetCanvas.width;
   const height = targetCanvas.height;
@@ -18,7 +19,7 @@ export function drawFamilyTree(targetCanvas, sourcePeople, colors = DEFAULT_COLO
   drawParentLines(ctx, layout, colors);
   drawMarriageLines(ctx, layout, colors);
   for (const person of layout.people) {
-    drawPerson(ctx, person, layout.positions.get(person.id), layout.box);
+    drawPerson(ctx, person, layout.positions.get(person.id), layout.box, layout.content, images);
   }
   return layout;
 }
@@ -134,36 +135,102 @@ export function getParentLineStyle(parentTypes, colors = DEFAULT_COLORS) {
   return { color: colors.child, dash: [] };
 }
 
-function drawPerson(ctx, person, pos, box) {
+// 性別は家系図の慣習にならって男性=□・女性=○で示す（色に頼らないので印刷でも伝わる）。
+function drawGenderMark(ctx, person, x, y, size) {
+  if (person.gender !== "male" && person.gender !== "female") return;
+  ctx.save();
+  ctx.lineWidth = Math.max(1, size * 0.14);
+  ctx.strokeStyle = "#3f4947";
+  ctx.beginPath();
+  if (person.gender === "male") {
+    ctx.rect(x, y, size, size);
+  } else {
+    ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPhoto(ctx, image, centerX, topY, size) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(centerX, topY + size / 2, size / 2, 0, Math.PI * 2);
+  ctx.clip();
+  // 縦横比を保ったまま円に収める
+  const ratio = Math.max(size / image.width, size / image.height);
+  const drawWidth = image.width * ratio;
+  const drawHeight = image.height * ratio;
+  ctx.drawImage(image, centerX - drawWidth / 2, topY + size / 2 - drawHeight / 2, drawWidth, drawHeight);
+  ctx.restore();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(centerX, topY + size / 2, size / 2, 0, Math.PI * 2);
+  ctx.lineWidth = Math.max(1, size * 0.05);
+  ctx.strokeStyle = "#a8c5c0";
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPerson(ctx, person, pos, box, content = { photos: false, memos: false }, images = null) {
   if (!pos) return;
+  const scale = box.w / 156;
   const x = pos.x - box.w / 2;
   const y = pos.y - box.h / 2;
-  const radius = Math.min(18, 14 * Math.max(0.7, box.w / 156));
+  const radius = Math.min(18, 14 * Math.max(0.7, scale));
 
   ctx.save();
   roundedRect(ctx, x, y, box.w, box.h, radius);
-  ctx.fillStyle = "#f2f9f7";
+  // 故人はうすい地色にして、ひと目で分かるようにする
+  ctx.fillStyle = person.deceased ? "#eceeed" : "#f2f9f7";
   ctx.fill();
-  ctx.strokeStyle = "#a8c5c0";
-  ctx.lineWidth = Math.max(1, 1.2 * box.w / 156);
+  ctx.strokeStyle = person.deceased ? "#9aa4a1" : "#a8c5c0";
+  ctx.lineWidth = Math.max(1, 1.2 * scale);
   ctx.stroke();
 
-  ctx.fillStyle = "#171d1b";
+  const padding = 8 * scale;
+  drawGenderMark(ctx, person, x + padding, y + padding, Math.max(6, 9 * scale));
+
+  let textTop = y + box.h / 2;
+  const photoSize = Math.max(18, 34 * scale);
+  if (content.photos) {
+    const image = images?.get(person.id) ?? null;
+    const photoTop = y + padding + Math.max(2, 3 * scale);
+    if (image) drawPhoto(ctx, image, pos.x, photoTop, photoSize);
+    // 写真を入れない人がいても文字の高さが揃うよう、残りの領域の中央に置く
+    textTop = (photoTop + photoSize + (y + box.h - padding)) / 2;
+  }
+
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  const nameSize = Math.max(9, 15 * box.w / 156);
-  const relationSize = Math.max(8, 10 * box.w / 156);
-  const yearsSize = Math.max(8, 11 * box.w / 156);
+  const nameSize = Math.max(9, 15 * scale);
+  const relationSize = Math.max(8, 10 * scale);
+  const yearsSize = Math.max(8, 11 * scale);
+  const memoSize = Math.max(7, 9.5 * scale);
+  const memoOffset = content.memos ? memoSize * 1.5 : 0;
+
+  ctx.fillStyle = person.deceased ? "#3f4947" : "#171d1b";
   ctx.font = `700 ${nameSize}px Roboto, "Noto Sans JP", system-ui, "Yu Gothic", sans-serif`;
-  fitText(ctx, person.name, pos.x, person.relation ? pos.y - relationSize * 1.7 : pos.y - yearsSize * 0.55, box.w - 16);
+  const nameY = textTop - (person.relation ? relationSize * 1.7 : yearsSize * 0.55) - memoOffset / 2;
+  fitText(ctx, person.name, pos.x, nameY, box.w - 16);
+
   if (person.relation) {
     ctx.font = `600 ${relationSize}px Roboto, "Noto Sans JP", system-ui, "Yu Gothic", sans-serif`;
     ctx.fillStyle = "#006a63";
-    fitText(ctx, person.relation, pos.x, pos.y, box.w - 18);
+    fitText(ctx, person.relation, pos.x, textTop - memoOffset / 2, box.w - 18);
   }
+
   ctx.font = `${yearsSize}px Roboto, "Noto Sans JP", system-ui, "Yu Gothic", sans-serif`;
   ctx.fillStyle = "#3f4947";
-  fitText(ctx, person.years || `ID ${person.id}`, pos.x, pos.y + (person.relation ? relationSize * 1.7 : yearsSize * 1.05), box.w - 18);
+  const yearsY = textTop + (person.relation ? relationSize * 1.7 : yearsSize * 1.05) - memoOffset / 2;
+  const years = person.years || (person.deceased ? "故人" : "");
+  if (years) fitText(ctx, years, pos.x, yearsY, box.w - 18);
+
+  if (content.memos && person.memo) {
+    ctx.font = `${memoSize}px Roboto, "Noto Sans JP", system-ui, "Yu Gothic", sans-serif`;
+    ctx.fillStyle = "#6f7976";
+    fitText(ctx, person.memo, pos.x, yearsY + memoSize * 1.6, box.w - 14);
+  }
+
   ctx.restore();
 }
 

@@ -2,9 +2,22 @@
 // DOMもCanvasも触らない純粋な処理だけを置く（tests/unit から直接読み込む）。
 
 export const PAPER_SIZES = {
-  a3: { key: "a3", label: "A3", widthMm: 420, heightMm: 297, ratio: 420 / 297 },
-  a4: { key: "a4", label: "A4", widthMm: 297, heightMm: 210, ratio: 297 / 210 }
+  a3: { key: "a3", label: "A3横", pageSize: "A3", orientation: "landscape", widthMm: 420, heightMm: 297, ratio: 420 / 297 },
+  a4: { key: "a4", label: "A4横", pageSize: "A4", orientation: "landscape", widthMm: 297, heightMm: 210, ratio: 297 / 210 },
+  b4: { key: "b4", label: "B4横", pageSize: "B4", orientation: "landscape", widthMm: 364, heightMm: 257, ratio: 364 / 257 },
+  a3p: { key: "a3p", label: "A3縦", pageSize: "A3", orientation: "portrait", widthMm: 297, heightMm: 420, ratio: 297 / 420 },
+  a4p: { key: "a4p", label: "A4縦", pageSize: "A4", orientation: "portrait", widthMm: 210, heightMm: 297, ratio: 210 / 297 }
 };
+
+export const GENDER_LABELS = {
+  unknown: "未設定",
+  male: "男性",
+  female: "女性",
+  other: "その他"
+};
+
+// 写真は縮小してから持つ前提。localStorage を圧迫しないよう上限を決めておく。
+export const MAX_PHOTO_LENGTH = 120000;
 
 export const DEFAULT_PAPER_SIZE = "a3";
 
@@ -37,7 +50,18 @@ const sampleRelationLabels = {
   17: "長女", 18: "長男", 19: "子"
 };
 
-for (const person of samplePeople) person.relation = sampleRelationLabels[person.id] || "";
+// サンプルは続柄から性別を当てる（□○の表示を最初から確かめられるように）
+const sampleGenders = {
+  1: "male", 2: "female", 3: "male", 4: "female", 5: "male", 6: "female",
+  7: "male", 8: "female", 9: "female", 10: "male", 11: "male", 12: "female",
+  13: "male", 14: "female", 15: "female", 16: "male",
+  17: "female", 18: "male", 19: "female"
+};
+
+for (const person of samplePeople) {
+  person.relation = sampleRelationLabels[person.id] || "";
+  person.gender = sampleGenders[person.id] || "unknown";
+}
 
 export function normalizePeople(input) {
   if (!Array.isArray(input)) return [];
@@ -50,6 +74,11 @@ export function normalizePeople(input) {
         relation: String(person.relation ?? person.kinship ?? "").trim(),
         years: String(person.years ?? "").trim(),
         generation: Number(person.generation ?? 0),
+        gender: GENDER_LABELS[person.gender] ? person.gender : "unknown",
+        // 指定が無ければ生没年から推測する（「1888-1962」は故人、「1948-」は存命）
+        deceased: typeof person.deceased === "boolean" ? person.deceased : hasEndYear(person.years),
+        memo: String(person.memo ?? "").trim(),
+        photo: normalizePhoto(person.photo),
         position: normalizePosition(person.position),
         spouseId: spouseIds[0] ?? null,
         spouseIds,
@@ -84,6 +113,19 @@ function normalizeSpouseRelationshipTypes(value) {
   return Object.fromEntries(Object.entries(value)
     .map(([spouseId, type]) => [String(Number(spouseId)), String(type)])
     .filter(([spouseId, type]) => Number(spouseId) > 0 && allowed.has(type)));
+}
+
+export function hasEndYear(years) {
+  return /\d{3,4}\s*[-–—~〜]\s*\d{3,4}/.test(String(years ?? ""));
+}
+
+// 写真は「縮小済みのデータURL」だけを受け入れる。外部URLや巨大な画像は捨てる。
+function normalizePhoto(value) {
+  if (typeof value !== "string") return null;
+  const photo = value.trim();
+  if (!photo.startsWith("data:image/")) return null;
+  if (photo.length > MAX_PHOTO_LENGTH) return null;
+  return photo;
 }
 
 function normalizePosition(value) {
@@ -150,7 +192,19 @@ export const PARENT_RELATIONSHIP_LABELS = {
 // 編集フォームが持つ下書き。IDは新規なら null で、保存時に採番する。
 export function createDraft(person = null) {
   if (!person) {
-    return { id: null, name: "", relation: "", years: "", generation: 0, parents: [], spouses: [] };
+    return {
+      id: null,
+      name: "",
+      relation: "",
+      years: "",
+      generation: 0,
+      gender: "unknown",
+      deceased: false,
+      memo: "",
+      photo: null,
+      parents: [],
+      spouses: []
+    };
   }
   return {
     id: person.id,
@@ -158,6 +212,10 @@ export function createDraft(person = null) {
     relation: person.relation,
     years: person.years,
     generation: person.generation,
+    gender: person.gender,
+    deceased: person.deceased,
+    memo: person.memo,
+    photo: person.photo,
     parents: person.parentIds.map((id) => ({
       id,
       type: person.parentRelationshipTypes[String(id)] || "biological"
@@ -211,6 +269,10 @@ export function applyPersonEdit(people, draft) {
     relation: String(draft.relation ?? "").trim(),
     years: String(draft.years ?? "").trim(),
     generation: Number(draft.generation),
+    gender: GENDER_LABELS[draft.gender] ? draft.gender : "unknown",
+    deceased: Boolean(draft.deceased),
+    memo: String(draft.memo ?? "").trim(),
+    photo: normalizePhoto(draft.photo),
     position: previous?.position ?? null,
     spouseId: spouses[0]?.id ?? null,
     spouseIds: spouses.map((entry) => entry.id),
@@ -252,7 +314,9 @@ export function describeRelations(person, people) {
   const nameOf = (id) => people.find((item) => item.id === id)?.name || `#${id}`;
   const parts = [`第${person.generation}世代`];
   if (person.relation) parts.unshift(person.relation);
+  if (person.gender !== "unknown") parts.push(GENDER_LABELS[person.gender]);
   if (person.years) parts.push(person.years);
+  if (person.deceased) parts.push("故人");
   if (person.spouseIds.length) parts.push(`配偶者: ${person.spouseIds.map(nameOf).join("、")}`);
   if (person.parentIds.length) parts.push(`親: ${person.parentIds.map(nameOf).join("、")}`);
   return parts.join(" / ");

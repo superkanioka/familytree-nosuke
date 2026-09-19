@@ -801,6 +801,57 @@ dialog::backdrop {
   background-color: var(--md-surface-container-lowest);
 }
 
+/* ===== Checkbox / photo ===== */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-md);
+  background: var(--md-surface-container-lowest);
+  color: var(--md-on-surface);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.checkbox-row input[type="checkbox"] {
+  width: 20px;
+  min-height: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--md-primary);
+}
+
+.photo-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.photo-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.photo-preview img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--md-surface-container);
+}
+
+.photo-empty {
+  color: var(--md-on-surface-variant);
+  font-size: 12px;
+}
+
 /* ===== Field errors ===== */
 .field-error {
   color: var(--md-error);

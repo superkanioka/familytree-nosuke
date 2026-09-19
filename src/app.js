@@ -1,12 +1,15 @@
 // 画面の組み立てとイベント配線。DOM・localStorage・印刷まわりはここだけに置く。
 import {
   DEFAULT_PAPER_SIZE,
+  GENDER_LABELS,
+  MAX_PHOTO_LENGTH,
   PARENT_RELATIONSHIP_LABELS,
   PAPER_SIZES,
   SPOUSE_RELATIONSHIP_LABELS,
   applyPersonEdit,
   createDraft,
   describeRelations,
+  hasEndYear,
   normalizePeople,
   samplePeople,
   suggestRelationFor,
@@ -44,8 +47,15 @@ const fields = {
   name: document.getElementById("name"),
   relation: document.getElementById("relation"),
   years: document.getElementById("years"),
-  generation: document.getElementById("generation")
+  generation: document.getElementById("generation"),
+  gender: document.getElementById("gender"),
+  memo: document.getElementById("memo")
 };
+const deceasedCheckbox = document.getElementById("deceased");
+const photoInput = document.getElementById("photoInput");
+const photoImage = document.getElementById("photoImage");
+const photoEmpty = document.getElementById("photoEmpty");
+const removePhotoBtn = document.getElementById("removePhotoBtn");
 const fieldErrors = {
   name: document.getElementById("nameError"),
   generation: document.getElementById("generationError")
@@ -107,6 +117,10 @@ const confirmCancelBtn = document.getElementById("confirmCancelBtn");
 
 let lastJsonUrl = "";
 let installPrompt = null;
+// 写真は id → 読み込み済みの画像。描画は同期なので、先に読んでおく。
+const photoImages = new Map();
+// 利用者が故人チェックを自分で触ったら、生没年からの推測で上書きしない。
+let deceasedTouched = false;
 
 // 編集中の下書き。IDは新規なら null で、保存時に採番する。
 let draft = createDraft(null);
@@ -135,6 +149,26 @@ function savePaperSize() {
   }
 }
 
+function renderGenderOptions() {
+  fields.gender.innerHTML = "";
+  for (const [value, label] of Object.entries(GENDER_LABELS)) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    fields.gender.append(option);
+  }
+}
+
+function renderPaperSizeOptions() {
+  paperSizeSelect.innerHTML = "";
+  for (const spec of Object.values(PAPER_SIZES)) {
+    const option = document.createElement("option");
+    option.value = spec.key;
+    option.textContent = spec.label;
+    paperSizeSelect.append(option);
+  }
+}
+
 function applyPaperSize() {
   const spec = getPaperSpec();
   paperSizeSelect.value = spec.key;
@@ -145,7 +179,7 @@ function applyPaperSize() {
   document.documentElement.style.setProperty("--paper-width-mm", spec.widthMm);
   document.documentElement.style.setProperty("--paper-height-mm", spec.heightMm);
   const printStyle = document.getElementById("printPaperStyle");
-  printStyle.textContent = `@page { size: ${spec.label} landscape; margin: 0; }`;
+  printStyle.textContent = `@page { size: ${spec.pageSize} ${spec.orientation}; margin: 0; }`;
 }
 
 function loadPeople() {
@@ -436,6 +470,11 @@ function renderDraft() {
   fields.relation.value = draft.relation;
   fields.years.value = draft.years;
   fields.generation.value = draft.generation;
+  fields.gender.value = GENDER_LABELS[draft.gender] ? draft.gender : "unknown";
+  fields.memo.value = draft.memo;
+  deceasedCheckbox.checked = Boolean(draft.deceased);
+  deceasedTouched = false;
+  renderPhotoPreview();
   clearFieldErrors();
   renderRelationList(parentList, draft.parents, PARENT_RELATIONSHIP_LABELS, "親");
   renderRelationList(spouseList, draft.spouses, SPOUSE_RELATIONSHIP_LABELS, "配偶者");
@@ -447,6 +486,75 @@ function readDraftFields() {
   draft.relation = fields.relation.value;
   draft.years = fields.years.value;
   draft.generation = fields.generation.value;
+  draft.gender = fields.gender.value;
+  draft.memo = fields.memo.value;
+  draft.deceased = deceasedCheckbox.checked;
+}
+
+function renderPhotoPreview() {
+  const hasPhoto = Boolean(draft.photo);
+  photoImage.hidden = !hasPhoto;
+  photoEmpty.hidden = hasPhoto;
+  removePhotoBtn.hidden = !hasPhoto;
+  if (hasPhoto) photoImage.src = draft.photo;
+  else photoImage.removeAttribute("src");
+}
+
+// 元の写真は大きすぎるので、長辺160pxのJPEGに縮めてから持つ。
+async function readPhoto(file) {
+  const bitmap = await createImageBitmap(file);
+  const limit = 160;
+  const scale = Math.min(limit / bitmap.width, limit / bitmap.height, 1);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+  return canvas.toDataURL("image/jpeg", 0.75);
+}
+
+async function choosePhoto(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  try {
+    const photo = await readPhoto(file);
+    if (photo.length > MAX_PHOTO_LENGTH) {
+      setStatus("写真を小さくできませんでした。別の画像を選んでください。", { tone: "error" });
+      return;
+    }
+    readDraftFields();
+    draft.photo = photo;
+    renderPhotoPreview();
+    setStatus("写真を読み込みました。保存すると家系図に載ります。");
+  } catch (error) {
+    setStatus(`写真を読み込めませんでした: ${error.message}`, { tone: "error" });
+  }
+}
+
+// 描画は同期なので、写真は先に読み込んでから再描画する。
+function syncPhotoImages() {
+  const wanted = new Set();
+  let pending = 0;
+  for (const person of people) {
+    if (!person.photo) continue;
+    wanted.add(person.id);
+    const cached = photoImages.get(person.id);
+    if (cached && cached.dataset.photo === person.photo) continue;
+    const image = new Image();
+    image.dataset.photo = person.photo;
+    pending += 1;
+    image.addEventListener("load", () => {
+      photoImages.set(person.id, image);
+      renderPreview();
+    }, { once: true });
+    image.addEventListener("error", () => photoImages.delete(person.id), { once: true });
+    image.src = person.photo;
+  }
+  for (const id of [...photoImages.keys()]) {
+    if (!wanted.has(id)) photoImages.delete(id);
+  }
+  return pending;
 }
 
 function renderRelationList(container, entries, labels, kind) {
@@ -596,8 +704,9 @@ function renderAll() {
   summary.textContent = `${people.length}人`;
   const generations = [...new Set(people.map((person) => person.generation))].sort((a, b) => a - b);
   const spec = getPaperSpec();
-  layoutSummary.textContent = generations.length ? `${generations[0]}〜${generations.at(-1)}世代 / ${spec.label}横` : `${spec.label}横`;
+  layoutSummary.textContent = generations.length ? `${generations[0]}〜${generations.at(-1)}世代 / ${spec.label}` : spec.label;
   applyPaperSize();
+  syncPhotoImages();
   renderPreview();
 }
 
@@ -673,7 +782,7 @@ function renderPreview() {
   const height = Math.round(width / getPaperSpec().ratio);
   canvas.width = width;
   canvas.height = height;
-  lastLayout = drawFamilyTree(canvas, people, treeColors());
+  lastLayout = drawFamilyTree(canvas, people, treeColors(), photoImages);
 }
 
 function canvasPoint(event) {
@@ -775,7 +884,7 @@ function exportPng() {
   const target = document.createElement("canvas");
   target.width = Math.round(spec.widthMm * PNG_PIXELS_PER_MM);
   target.height = Math.round(spec.heightMm * PNG_PIXELS_PER_MM);
-  drawFamilyTree(target, people, treeColors());
+  drawFamilyTree(target, people, treeColors(), photoImages);
   const fileName = `familytree-${new Date().toISOString().slice(0, 10)}.png`;
 
   target.toBlob(async (blob) => {
@@ -800,7 +909,7 @@ function exportPng() {
     link.download = fileName;
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 10000);
-    setStatus(`${spec.label}横の画像を保存しました。`);
+    setStatus(`${spec.label}の画像を保存しました。`);
   }, "image/png");
 }
 
@@ -881,7 +990,7 @@ paperSizeSelect.addEventListener("change", () => {
   paperSize = PAPER_SIZES[paperSizeSelect.value] ? paperSizeSelect.value : DEFAULT_PAPER_SIZE;
   savePaperSize();
   renderAll();
-  setStatus(`${getPaperSpec().label}横に変更しました。`);
+  setStatus(`${getPaperSpec().label}に変更しました。`);
 });
 document.getElementById("printBtn").addEventListener("click", () => window.print());
 document.getElementById("exportPngBtn").addEventListener("click", exportPng);
@@ -909,6 +1018,22 @@ undoBtn.addEventListener("click", undo);
 undoActionBtn.addEventListener("click", undo);
 redoActionBtn.addEventListener("click", redo);
 document.getElementById("addParentBtn").addEventListener("click", addParent);
+deceasedCheckbox.addEventListener("change", () => {
+  deceasedTouched = true;
+});
+// 「1900-1980」のように終年を入れたら、故人として扱う
+fields.years.addEventListener("input", () => {
+  if (deceasedTouched) return;
+  deceasedCheckbox.checked = hasEndYear(fields.years.value);
+});
+document.getElementById("choosePhotoBtn").addEventListener("click", () => photoInput.click());
+photoInput.addEventListener("change", choosePhoto);
+removePhotoBtn.addEventListener("click", () => {
+  readDraftFields();
+  draft.photo = null;
+  renderPhotoPreview();
+  setStatus("写真を外しました。保存すると反映されます。");
+});
 document.getElementById("addSpouseBtn").addEventListener("click", addSpouse);
 
 // 文字入力中は、ブラウザ本来の取り消しを邪魔しない。
@@ -928,6 +1053,8 @@ document.addEventListener("keydown", (event) => {
 window.addEventListener("resize", renderPreview);
 
 attachRipples();
+renderGenderOptions();
+renderPaperSizeOptions();
 setSheetOpen(!smallScreen.matches);
 registerServiceWorker();
 renderAll();

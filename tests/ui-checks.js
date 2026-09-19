@@ -250,6 +250,67 @@
       ok("バックアップから復元できる", $("status").textContent.includes("バックアップから復元"), $("status").textContent);
     }
 
+    // --- 性別・故人・備考を保存できる ---
+    document.querySelector(".person-row button").click();
+    await wait(10);
+    const detailTarget = JSON.parse($("jsonEditor").value).find((item) => item.name === $("name").value).id;
+    $("gender").value = "female";
+    $("memo").value = "テスト備考";
+    $("deceased").checked = true;
+    $("saveBtn").click();
+    await wait(20);
+    const detailSaved = JSON.parse($("jsonEditor").value).find((item) => item.id === detailTarget);
+    ok("性別を保存する", detailSaved.gender === "female", detailSaved.gender);
+    ok("備考を保存する", detailSaved.memo === "テスト備考", detailSaved.memo);
+    ok("故人指定を保存する", detailSaved.deceased === true, String(detailSaved.deceased));
+    ok("一覧にも出る", document.querySelector(".person-row.is-selected .person-meta").textContent.includes("故人"));
+
+    // --- 生没年から故人を推測する ---
+    $("newBtn").click();
+    $("name").value = "推測テスト";
+    $("years").value = "1900-1980";
+    $("years").dispatchEvent(new Event("input", { bubbles: true }));
+    $("generation").value = "0";
+    $("saveBtn").click();
+    await wait(20);
+    ok("終年があれば故人にする", JSON.parse($("jsonEditor").value).find((item) => item.name === "推測テスト").deceased);
+    ok("チェック欄にも反映する", $("deceased").checked);
+
+    // --- 写真は選び直しても外せる ---
+    ok("写真は最初は未設定", $("photoImage").hidden && !$("removePhotoBtn").hidden === false);
+    const photoCanvas = document.createElement("canvas");
+    photoCanvas.width = 40;
+    photoCanvas.height = 40;
+    photoCanvas.getContext("2d").fillRect(0, 0, 40, 40);
+    const dataUrl = photoCanvas.toDataURL("image/jpeg", 0.7);
+    $("jsonEditor").value = JSON.stringify(
+      JSON.parse($("jsonEditor").value).map((item, index) => (index === 0 ? { ...item, photo: dataUrl } : item))
+    );
+    $("applyJsonBtn").click();
+    await wait(40);
+    ok("写真付きで読み込める", JSON.parse($("jsonEditor").value)[0].photo === dataUrl);
+    document.querySelector(".person-row button").click();
+    await wait(30);
+    ok("写真が編集欄に出る", !$("photoImage").hidden && $("photoImage").src.startsWith("data:image/"));
+    ok("外すボタンが出る", !$("removePhotoBtn").hidden);
+    $("removePhotoBtn").click();
+    $("saveBtn").click();
+    await wait(20);
+    ok("写真を外せる", JSON.parse($("jsonEditor").value).find((item) => item.name === $("name").value).photo === null);
+
+    // --- 用紙は縦向きも選べる ---
+    const paperOptions = [...$("paperSize").options].map((option) => option.textContent);
+    ok("用紙が5種類ある", paperOptions.length === 5, paperOptions.join(","));
+    ok("縦向きがある", paperOptions.some((label) => label.includes("縦")), paperOptions.join(","));
+    $("paperSize").value = "a4p";
+    $("paperSize").dispatchEvent(new Event("change", { bubbles: true }));
+    await wait(30);
+    ok("縦向きの印刷指定になる", $("printPaperStyle").textContent.includes("portrait"), $("printPaperStyle").textContent);
+    ok("用紙の比率が縦になる", document.querySelector(".paper").style.aspectRatio === "210 / 297", document.querySelector(".paper").style.aspectRatio);
+    $("paperSize").value = "a3";
+    $("paperSize").dispatchEvent(new Event("change", { bubbles: true }));
+    await wait(30);
+
     // --- 画像として書き出せる（共有が使えない環境ではダウンロード） ---
     const createdBlobs = [];
     const realCreate = URL.createObjectURL;
