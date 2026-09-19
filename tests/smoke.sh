@@ -58,6 +58,18 @@ required = [
     '@page',
     'function exportJson()',
     'function importJsonFile',
+    # 安全機能（削除確認・元に戻す・自動バックアップ・保存エラー検知）
+    'id="confirmDialog"',
+    'id="confirmOkBtn"',
+    'id="confirmCancelBtn"',
+    'id="undoBtn"',
+    'id="backupList"',
+    'function confirmAction',
+    'async function deleteSelected',
+    'function pushBackup',
+    'function restoreSnapshot',
+    'function checkStorage',
+    'familytree.backups',
 ]
 missing = [item for item in required if item not in html]
 if missing:
@@ -67,5 +79,5 @@ for forbidden in ("jspdf", "jsPDF", "generatePdfLink", "pdfBtn"):
     if forbidden in html:
         raise SystemExit(f"smoke test: forbidden PDF reference remains: {forbidden}")
 
-print("smoke test passed: index.html served, JSON/relation/print UI present, PDF references absent")
+print("smoke test passed: index.html served, JSON/relation/print/safety UI present, PDF references absent")
 PY
