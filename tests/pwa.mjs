@@ -9,7 +9,7 @@
 // Chromium が無ければスキップする（CHROME=/path/to/chrome で指定可）。
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
-import { access, cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -125,12 +125,18 @@ class Session {
   }
 }
 
+// GitHub Pages はリポジトリ名のサブパスで配信されるため、テストも同じ形にする。
+// ルート直下を前提にした絶対パスが紛れ込んでいれば、ここで気づける。
+const SITE_PATH = "familytree-nosuke";
+
 async function stageSite() {
   const dir = await mkdtemp(join(tmpdir(), "familytree-pwa-"));
+  const site = join(dir, SITE_PATH);
+  await mkdir(site, { recursive: true });
   for (const name of ["index.html", "manifest.webmanifest", "sw.js"]) {
-    await writeFile(join(dir, name), await readFile(join(root, name)));
+    await writeFile(join(site, name), await readFile(join(root, name)));
   }
-  await cp(join(root, "icons"), join(dir, "icons"), { recursive: true });
+  await cp(join(root, "icons"), join(site, "icons"), { recursive: true });
   return dir;
 }
 
@@ -158,7 +164,7 @@ async function main() {
 
   let session = null;
   try {
-    const origin = `http://127.0.0.1:${sitePort}/`;
+    const origin = `http://127.0.0.1:${sitePort}/${SITE_PATH}/`;
     await waitFor(async () => (await fetch(origin)).ok, { label: "配信サーバーの起動" });
     await waitFor(async () => (await fetch(`http://127.0.0.1:${debugPort}/json/version`)).ok, { label: "ブラウザの起動" });
 
@@ -202,7 +208,7 @@ async function main() {
       }))
     `);
     ok("Service Workerが有効になる", registration.state === "activated", registration.state);
-    ok("スコープはアプリのフォルダ", registration.scope === origin, registration.scope);
+    ok("スコープはサブパスに収まる", registration.scope === origin, registration.scope);
     ok("ページが制御下に入る", await waitFor(() => session.evaluate("!!navigator.serviceWorker.controller"), { label: "SWの制御" }));
 
     // --- キャッシュ ---
