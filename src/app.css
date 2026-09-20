@@ -2,40 +2,42 @@
 :root {
   color-scheme: light dark;
 
-  --md-primary: #006a63;
+  /* 記録・書類寄りに、緑は主張しすぎない「インクの差し色」に落とす。
+     地色は暖かみのある紙色、文字は温かい墨色。 */
+  --md-primary: #38695d;
   --md-on-primary: #ffffff;
-  --md-primary-container: #9ef2e7;
-  --md-on-primary-container: #00201d;
-  --md-secondary: #4a635f;
-  --md-secondary-container: #cce8e3;
-  --md-on-secondary-container: #051f1c;
-  --md-tertiary: #46617a;
-  --md-error: #ba1a1a;
+  --md-primary-container: #cfe3dc;
+  --md-on-primary-container: #14342c;
+  --md-secondary: #55605b;
+  --md-secondary-container: #dde5df;
+  --md-on-secondary-container: #1c2521;
+  --md-tertiary: #5a5342;
+  --md-error: #9c3a34;
   --md-on-error: #ffffff;
-  --md-error-container: #ffdad6;
-  --md-on-error-container: #410002;
+  --md-error-container: #f4dcd8;
+  --md-on-error-container: #3a0d0a;
 
-  --md-surface: #f4fbf8;
-  --md-on-surface: #171d1b;
-  --md-on-surface-variant: #3f4947;
-  --md-surface-container-lowest: #ffffff;
-  --md-surface-container-low: #eff5f2;
-  --md-surface-container: #e9efec;
-  --md-surface-container-high: #e3e9e7;
-  --md-surface-container-highest: #dee4e1;
-  --md-inverse-surface: #2b3230;
-  --md-inverse-on-surface: #eff5f2;
-  --md-outline: #6f7976;
-  --md-outline-variant: #bec9c6;
-  --md-scrim: rgba(0, 0, 0, 0.4);
+  --md-surface: #f7f4ee;
+  --md-on-surface: #23201b;
+  --md-on-surface-variant: #4b4740;
+  --md-surface-container-lowest: #fffdf8;
+  --md-surface-container-low: #f2efe8;
+  --md-surface-container: #ece8e0;
+  --md-surface-container-high: #e6e1d8;
+  --md-surface-container-highest: #e0dbd1;
+  --md-inverse-surface: #33302b;
+  --md-inverse-on-surface: #f3efe7;
+  --md-outline: #7a746a;
+  --md-outline-variant: #cbc4b7;
+  --md-scrim: rgba(28, 24, 18, 0.42);
 
   /* 家系図の線の色（Canvasが読む。用紙は白なので印刷に合わせた濃色） */
   --marriage: #8f4b53;
   --child: #3f4947;
 
-  --md-elev-1: 0 1px 2px rgba(0, 0, 0, 0.10), 0 1px 3px 1px rgba(0, 0, 0, 0.06);
-  --md-elev-2: 0 1px 3px rgba(0, 0, 0, 0.12), 0 4px 8px 2px rgba(0, 0, 0, 0.07);
-  --md-elev-3: 0 2px 6px rgba(0, 0, 0, 0.14), 0 8px 20px 4px rgba(0, 0, 0, 0.10);
+  --md-elev-1: 0 1px 2px rgba(40, 34, 24, 0.06), 0 1px 2px rgba(40, 34, 24, 0.04);
+  --md-elev-2: 0 1px 3px rgba(40, 34, 24, 0.08), 0 3px 6px rgba(40, 34, 24, 0.05);
+  --md-elev-3: 0 2px 6px rgba(40, 34, 24, 0.10), 0 10px 24px rgba(40, 34, 24, 0.10);
 
   --r-xs: 8px;
   --r-sm: 12px;
@@ -51,32 +53,32 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --md-primary: #82d5cb;
-    --md-on-primary: #00382f;
-    --md-primary-container: #005048;
-    --md-on-primary-container: #9ef2e7;
-    --md-secondary: #b0ccc6;
-    --md-secondary-container: #324b47;
-    --md-on-secondary-container: #cce8e3;
-    --md-tertiary: #aecbe8;
-    --md-error: #ffb4ab;
-    --md-on-error: #690005;
-    --md-error-container: #93000a;
-    --md-on-error-container: #ffdad6;
+    --md-primary: #a7cabf;
+    --md-on-primary: #10352c;
+    --md-primary-container: #2a4c43;
+    --md-on-primary-container: #c3e0d7;
+    --md-secondary: #c1cabf;
+    --md-secondary-container: #3c443e;
+    --md-on-secondary-container: #dde5df;
+    --md-tertiary: #d2c6ad;
+    --md-error: #f2b8b2;
+    --md-on-error: #591a16;
+    --md-error-container: #75302b;
+    --md-on-error-container: #f4dcd8;
 
-    --md-surface: #0e1513;
-    --md-on-surface: #dee4e1;
-    --md-on-surface-variant: #bec9c6;
-    --md-surface-container-lowest: #090f0e;
-    --md-surface-container-low: #171d1b;
-    --md-surface-container: #1b2220;
-    --md-surface-container-high: #252c2a;
-    --md-surface-container-highest: #303735;
-    --md-inverse-surface: #dee4e1;
-    --md-inverse-on-surface: #2b3230;
-    --md-outline: #899390;
-    --md-outline-variant: #3f4947;
-    --md-scrim: rgba(0, 0, 0, 0.6);
+    --md-surface: #16130f;
+    --md-on-surface: #e7e1d6;
+    --md-on-surface-variant: #cbc4b7;
+    --md-surface-container-lowest: #100e0a;
+    --md-surface-container-low: #1e1a15;
+    --md-surface-container: #221e18;
+    --md-surface-container-high: #2c2822;
+    --md-surface-container-highest: #37322b;
+    --md-inverse-surface: #e7e1d6;
+    --md-inverse-on-surface: #33302b;
+    --md-outline: #968f82;
+    --md-outline-variant: #4b4740;
+    --md-scrim: rgba(0, 0, 0, 0.62);
 
     --md-elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px 1px rgba(0, 0, 0, 0.3);
     --md-elev-2: 0 1px 3px rgba(0, 0, 0, 0.5), 0 4px 8px 2px rgba(0, 0, 0, 0.35);
@@ -93,13 +95,14 @@ html, body {
 
 body {
   font-family: var(--font);
+  /* 年配の家族も読める大きさを基準にする（PC中心） */
+  font-size: 17px;
   color: var(--md-on-surface);
   background:
-    radial-gradient(1200px 600px at 100% -10%, color-mix(in srgb, var(--md-primary) 12%, transparent), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, color-mix(in srgb, var(--md-tertiary) 12%, transparent), transparent 55%),
+    radial-gradient(1400px 700px at 50% -20%, color-mix(in srgb, var(--md-primary) 5%, transparent), transparent 60%),
     var(--md-surface);
   -webkit-font-smoothing: antialiased;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 h1, h2 { margin: 0; }
@@ -138,12 +141,12 @@ h1, h2 { margin: 0; }
   width: 44px;
   height: 44px;
   border-radius: var(--r-md);
-  background: linear-gradient(135deg, var(--md-primary), color-mix(in srgb, var(--md-tertiary) 70%, var(--md-primary)));
+  background: linear-gradient(150deg, var(--md-primary), color-mix(in srgb, var(--md-primary) 70%, #1c2a24));
   color: var(--md-on-primary);
   box-shadow: var(--md-elev-2);
 }
-.app-title h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.01em; }
-.app-subtitle { margin: 0; font-size: 0.72rem; color: var(--md-on-surface-variant); letter-spacing: 0.08em; text-transform: uppercase; }
+.app-title h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: 0.01em; }
+.app-subtitle { margin: 0; font-size: 0.72rem; color: var(--md-on-surface-variant); letter-spacing: 0.1em; text-transform: uppercase; }
 
 /* ===== カード ===== */
 .card {
@@ -161,7 +164,7 @@ h1, h2 { margin: 0; }
   color: var(--md-on-surface);
 }
 .card-head .icon { color: var(--md-primary); }
-.card-head h2 { font-size: 0.98rem; font-weight: 700; }
+.card-head h2 { font-size: 1.06rem; font-weight: 700; letter-spacing: 0.01em; }
 
 /* ===== フォーム ===== */
 form { display: flex; flex-direction: column; gap: 14px; }
@@ -169,18 +172,18 @@ label {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 0.8rem;
+  font-size: 0.86rem;
   font-weight: 600;
   color: var(--md-on-surface-variant);
 }
 input, select, textarea {
   font-family: inherit;
-  font-size: 0.92rem;
+  font-size: 1rem;
   color: var(--md-on-surface);
   background: var(--md-surface-container-lowest);
   border: 1.5px solid var(--md-outline-variant);
   border-radius: var(--r-xs);
-  padding: 10px 12px;
+  padding: 12px 14px;
   transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease), background 0.15s var(--ease);
   min-width: 0;
 }
@@ -258,16 +261,17 @@ input.is-invalid, select.is-invalid { border-color: var(--md-error); }
 /* ===== ボタン ===== */
 button {
   font-family: inherit;
-  font-size: 0.86rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   border: none;
   border-radius: var(--r-full);
-  padding: 10px 18px;
+  padding: 12px 22px;
+  min-height: 46px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 8px;
   position: relative;
   overflow: hidden;
   background: var(--md-primary);
@@ -277,8 +281,8 @@ button {
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
 }
-button:hover { box-shadow: var(--md-elev-2); filter: brightness(1.05); transform: translateY(-1px); }
-button:active { transform: translateY(0); box-shadow: var(--md-elev-1); }
+button:hover { box-shadow: var(--md-elev-2); filter: brightness(1.03); }
+button:active { transform: translateY(1px); box-shadow: var(--md-elev-1); }
 button:focus-visible { outline: 3px solid color-mix(in srgb, var(--md-primary) 45%, transparent); outline-offset: 2px; }
 button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; transform: none; filter: none; }
 
@@ -326,9 +330,9 @@ button.tonal-sm:hover { filter: brightness(0.97); }
   border-radius: 50%;
   transform: scale(0);
   background: currentColor;
-  opacity: 0.28;
+  opacity: 0.14;
   pointer-events: none;
-  animation: ripple 0.55s var(--ease);
+  animation: ripple 0.5s var(--ease);
 }
 @keyframes ripple { to { transform: scale(2.4); opacity: 0; } }
 
@@ -352,14 +356,14 @@ button.tonal-sm:hover { filter: brightness(0.97); }
   width: 38px;
   height: 38px;
   border-radius: var(--r-full);
-  background: linear-gradient(135deg, var(--md-primary), var(--md-tertiary));
+  background: linear-gradient(150deg, var(--md-primary), color-mix(in srgb, var(--md-primary) 65%, #1c2a24));
   color: var(--md-on-primary);
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.05rem;
 }
 .person-text { min-width: 0; }
-.person-title { font-weight: 700; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.person-meta { font-size: 0.72rem; color: var(--md-on-surface-variant); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person-title { font-weight: 700; font-size: 0.98rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person-meta { font-size: 0.8rem; color: var(--md-on-surface-variant); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ===== JSON / バックアップ / ダウンロード ===== */
 .download-box { margin-top: 12px; }
@@ -404,9 +408,9 @@ button.tonal-sm:hover { filter: brightness(0.97); }
 .chip {
   display: inline-flex;
   align-items: center;
-  padding: 6px 14px;
+  padding: 7px 16px;
   border-radius: var(--r-full);
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 700;
   background: var(--md-primary-container);
   color: var(--md-on-primary-container);
@@ -417,7 +421,7 @@ button.tonal-sm:hover { filter: brightness(0.97); }
   flex-direction: row;
   align-items: center;
   gap: 8px;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
 }
 .toolbar-size select { padding: 8px 10px; }
 .toolbar .btn-label { display: inline; }
@@ -488,7 +492,7 @@ dialog[open] { animation: dialog-in 0.2s var(--ease); }
 .dialog-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .dialog-head .icon { color: var(--md-primary); }
 .dialog-title { font-size: 1.05rem; font-weight: 700; }
-.dialog-body { margin: 0 0 20px; color: var(--md-on-surface-variant); font-size: 0.9rem; }
+.dialog-body { margin: 0 0 20px; color: var(--md-on-surface-variant); font-size: 0.98rem; line-height: 1.65; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 
 .picker-search { margin-bottom: 12px; }
