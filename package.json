@@ -5,7 +5,15 @@
   "description": "家系図作成アプリ（単一HTMLで配布、ソースは src/ に分割）",
   "type": "module",
   "scripts": {
-    "build": "node build.mjs",
-    "test": "node --test \"tests/unit/*.test.js\" && node build.mjs --check && bash tests/smoke.sh && bash tests/browser.sh && node tests/pwa.mjs"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test \"tests/unit/*.test.js\" && vite build"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
+    "svelte": "^5.57.1",
+    "vite": "^8.3.0",
+    "vite-plugin-singlefile": "^2.3.3"
   }
 }

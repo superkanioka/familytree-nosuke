@@ -1,7 +1,8 @@
-// このファイルは build.mjs が src/sw.template.js から生成します。
-// キャッシュ名のバージョンは配布物の内容から作るので、中身が変われば必ず入れ替わります。
-const CACHE_NAME = "familytree-{{version}}";
-const ASSETS = {{assets}};
+// 単一HTML配布のPWA用 Service Worker。
+// 本体(index.html)は「つながっていれば最新、だめならキャッシュ」。
+// これで更新が届かなくなることがなく、オフラインでも開ける。
+const CACHE_NAME = "familytree-v1";
+const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
@@ -24,8 +25,6 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   if (new URL(request.url).origin !== self.location.origin) return;
 
-  // 本体は「つながっていれば最新、つながらなければキャッシュ」。
-  // これで更新が届かなくなることがなく、オフラインでも開ける。
   if (request.mode === "navigate") {
     event.respondWith((async () => {
       try {
@@ -41,7 +40,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // アイコンなどは中身が変わらないので、キャッシュを先に見る。
   event.respondWith((async () => {
     const cached = await caches.match(request);
     return cached ?? fetch(request);

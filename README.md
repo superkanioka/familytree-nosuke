@@ -2,9 +2,11 @@
 
 A3横向きを初期値に、A4横向きも選べるクライアントサイド完結の家系図作成アプリです。人物データを編集しながらCanvasでプレビューし、ブラウザの印刷機能から印刷・PDF保存できます。
 
+Svelte + Vite で作っています。開発は `npm run dev`、配布物は `npm run build` で `dist/index.html`（JS/CSSを内包した1枚）に収まります。ビルド後の `dist/index.html` は `file://` でそのまま開いても動きます。
+
 ## 実行方法
 
-1. `index.html` をブラウザで開きます。
+1. 開発中は `npm install` のあと `npm run dev` で開発サーバーを起動し、表示されたURLを開きます。配布物を確認するなら `npm run build` 後に `dist/index.html` を開きます。
 2. 左側のフォームで人物を追加・編集します。
 3. 親と配偶者は `親を選ぶ` / `配偶者を選ぶ` から一覧で選びます。IDを覚える必要はありません。親を選ぶと世代が自動で決まります。
 4. 続柄は候補を選ぶか自由入力します。`候補` を押すと、登録済みの親や配偶者から `第N子` や `配偶者` を自動入力できます。
@@ -17,17 +19,17 @@ A3横向きを初期値に、A4横向きも選べるクライアントサイド�
 
 Canvas上の人物枠をクリックすると、その人物を編集できます。操作はツールバーの `元に戻す` / `やり直す`（`Ctrl+Z` / `Ctrl+Shift+Z`）で取り消せます。
 
-ローカルサーバーで確認したい場合は、任意の静的サーバーでこのフォルダを配信してください。
+開発サーバーは次のように起動します。
 
-```powershell
-python -m http.server 8000
+```bash
+npm run dev
 ```
 
-その後、ブラウザで `http://localhost:8000/` を開きます。
+配布物（`dist/`）を静的サーバーで確認する場合は `npm run preview` を使います。
 
 ## アプリとして使う（PWA）
 
-`index.html` をそのまま開く使い方は今までどおりです。加えて、https（またはローカルサーバー）で配信すると**インストールできるアプリ**として使えます。
+ビルドした `dist/index.html` をそのまま開く使い方に加えて、https（またはローカルサーバー）で配信すると**インストールできるアプリ**として使えます。
 
 - Android/Chromeでは、ツールバーに `アプリとして追加` が出ます。ホーム画面から単独ウィンドウで起動します。
 - iOS/Safariでは、共有メニューの「ホーム画面に追加」で同じことができます。
@@ -36,36 +38,41 @@ python -m http.server 8000
 
 ### GitHub Pagesで配る
 
-`main` への push で `.github/workflows/pages.yml` がテストを通し、配布物（`index.html` / `manifest.webmanifest` / `sw.js` / `icons/`）だけを公開します。**初回だけ、リポジトリの Settings > Pages で Source を「GitHub Actions」に変更してください。**
+`main` への push で `.github/workflows/pages.yml` がテスト＋ビルドを通し、`dist/`（`index.html` / `manifest.webmanifest` / `sw.js` / `icons/`）を公開します。**初回だけ、リポジトリの Settings > Pages で Source を「GitHub Actions」に変更してください。**
 
 `file://` で開いた場合、Service Workerは登録されません（ブラウザの制約）。アプリの機能はすべて従来どおり動きます。
 
 ## ソース構成とビルド
 
-配布物は `index.html`（1枚で完結）と、PWA用の `manifest.webmanifest` / `sw.js` / `icons/` です。これらは `src/` から生成しています。**生成物を直接編集しないでください。**
+Svelte + Vite 構成です。`npm run build` で `vite-plugin-singlefile` がJS/CSSを1枚の `dist/index.html` に内包し、PWA用の `manifest.webmanifest` / `sw.js` / `icons/`（`public/`）を横に並べます。
 
 ```
+index.html             Viteのエントリ（SVGアイコンのスプライトとマウント先を持つ）
 src/
-  index.template.html  HTMLの骨組み（{{styles}} {{icons}} {{script}} を埋める）
-  styles.css           Material 3のスタイル
-  icons.svg            画面内のSVGアイコンのスプライト
+  main.js              Svelteアプリのマウント
+  App.svelte           画面全体の組み立て（レイアウト・印刷@page・キー操作・PWA配線）
+  app.css              Material 3をベースにしたグローバルスタイル
   data.js              人物データの正規化・下書きの検証・続柄の推定（DOMなし）
   layout.js            世代ごとの自動配置（DOMなし）
   draw.js              Canvas描画（DOMなし、配色は引数で受け取る）
-  app.js               DOM・localStorage・イベント配線
-  manifest.webmanifest PWAのマニフェスト（そのまま配布物になる）
-  sw.template.js       Service Workerのひな形（キャッシュ名はビルド時に埋める）
-  app-icon.svg         アプリアイコンの元データ
-build.mjs              src/ から配布物を生成する（依存パッケージなし）
-tools/make-icons.sh    app-icon.svg から icons/*.png を作り直す（Chromiumが必要）
+  lib/
+    store.svelte.js    状態とロジックの中枢（localStorageと履歴。DOM/Canvasには触れない）
+    dialogs.svelte.js  ピッカー・確認ダイアログをPromiseで開く共有状態
+  components/          フォーム・一覧・ツールバー・プレビュー・ダイアログ等のSvelte部品
+public/
+  manifest.webmanifest PWAのマニフェスト
+  sw.js                Service Worker（本体はネット優先・アイコンはキャッシュ優先）
+  icons/               アプリアイコン
+tools/make-icons.sh    アイコンPNGを作り直す（Chromiumが必要）
 ```
+
+`data.js` / `layout.js` / `draw.js` はDOMから切り離した純粋モジュールで、Svelteからも `tests/unit` からも同じものを読み込みます。
 
 ```bash
-node build.mjs           # index.html / manifest.webmanifest / sw.js を生成する
-node build.mjs --check   # 生成物が src/ と一致するか確認する
+npm run dev      # 開発サーバー
+npm run build    # dist/index.html（単一HTML）を生成
+npm run preview  # dist/ をローカル配信して確認
 ```
-
-`build.mjs` は各モジュールから `import` / `export` を取り除いて依存順に連結し、構文を検査してから差し込みます。Service Workerのキャッシュ名は**配布物の内容のハッシュ**なので、中身が変われば必ず新しいキャッシュに切り替わります。生成物はコミットするので、利用者は今までどおりファイルを開くだけで使えます。
 
 ## テスト
 
@@ -73,23 +80,14 @@ node build.mjs --check   # 生成物が src/ と一致するか確認する
 npm test
 ```
 
-次の5つを順に実行します。
+次の2つを順に実行します。
 
 1. `node --test "tests/unit/*.test.js"` — `data.js` / `layout.js` / `draw.js` のユニットテスト（80件）
-2. `node build.mjs --check` — 生成物が `src/` から作り直した結果と一致するか
-3. `bash tests/smoke.sh` — 静的配信と必須UIの存在確認
-4. `bash tests/browser.sh` — ヘッドレスChromiumでの実操作（96件）
-5. `node tests/pwa.mjs` — http配信でのPWA動作（23件）
+2. `vite build` — 本番ビルドが通ること（Svelteのコンパイルと単一HTML生成の検証）
 
 `draw.js` のテストはCanvasの代わりに呼び出しを記録するスタブを使います。`document` や `window` に触れているとNodeで例外になるため、描画ロジックがDOMから切り離されていることもここで担保しています。
 
-`tests/pwa.mjs` は生成物を一時フォルダへ並べて `python3 -m http.server` で配信し、ヘッドレスChromiumをDevToolsプロトコルで操作します（`--dump-dom` ではService Workerの登録完了を待てないため）。**配信サーバーを実際に停止してから読み込み直し**、それでもアプリが開けることまで確認します。
-
-### テストの補足
-
-- `tests/smoke.sh` はNode.jsもChromiumも使わず、静的配信と必須UIの存在だけを確認します（`python3` のみ必要）。
-- `tests/browser.sh` と `tests/pwa.mjs` はChromiumが見つからない場合スキップします。使うバイナリは `CHROME=/path/to/chrome bash tests/browser.sh` で指定できます。検証内容は `tests/ui-checks.js`（通常操作）と `tests/storage-checks.js`（保存できない環境）にあります。
-- 見た目の最終確認は、Chromeなどで `index.html` か `http://127.0.0.1:8000/` を開いて行います。
+見た目や実操作の最終確認は、`npm run dev` か、ビルドした `dist/index.html` をブラウザで開いて行います。
 
 ## データを失わないための仕組み
 
@@ -114,23 +112,23 @@ WSL2から確認用サーバーを起動する場合:
 
 ```bash
 cd /home/yanas/dev/familytree-nosuke
-python3 -m http.server 8001
+npm run dev
 ```
 
-ブラウザでは `http://127.0.0.1:8001/` を開きます。Windows側の元コピーは、移行確認用に残しています。
+表示されたURL（既定では `http://localhost:5173/`）をブラウザで開きます。
 
 ## 画面デザイン
 
 UIはMaterial 3（Material You）のガイドラインに沿ったスタイルにしています。
 
-- 配色はティール系シードのM3トーナルパレットで、`--md-*` カスタムプロパティとして `:root` に定義しています。旧来の `--accent` などはこれらのエイリアスとして残しています。
+- 配色はティール系シードのM3トーナルパレットで、`--md-*` カスタムプロパティとして `:root` に定義しています。家系図の線色は `--marriage` / `--child` として持ち、Canvasが読み取ります。
 - OSの設定に合わせてライト / ダークテーマを自動で切り替えます（`prefers-color-scheme`）。用紙プレビューは印刷結果と一致させるため、ダークテーマでも白のままです。
 - ボタンはM3のFilled / Tonal / Errorの3種類（`既定` / `.secondary` / `.danger`）で、押下時にリップルが広がります。入力欄はOutlined text fieldスタイルです。
 - サイドバーは編集フォーム・人物一覧・JSONの3枚のカードに分割し、人物一覧はアバター付きのリストアイテムとして選択中の人物をハイライトします。
 - ツールバーはトップアプリバーとして固定表示し、人数・世代の情報はチップで表示します。
 - アイコンは外部フォントを使わず、`index.html` 内のSVGスプライト（`#ic-*`）で完結させています。オフラインでもそのまま開けます。
 - 親・配偶者はモーダルの人物ピッカー（検索付きリスト）で選びます。既に選んだ人物と自分自身は候補から外れます。
-- 920px以下では、家系図を主役にして編集フォームをボトムシートに畳みます。つまみをタップすると開き、Canvas上の人物をタップしたときも開きます。用紙は最低680px幅を保ち、横スクロールで読めるようにしています。
+- 920px以下では、家系図を主役にして編集フォームをボトムシートに畳みます。つまみをタップすると開きます。
 - 入力エラーはM3のerror stateとsupporting textで、該当の入力欄に出します。
 - 性別は□（男性）・○（女性）の記号で示し、故人は枠の地色を落として表します。印刷は白黒でも読み取れます。
 - `prefers-reduced-motion` が有効な環境ではアニメーションを無効化します。

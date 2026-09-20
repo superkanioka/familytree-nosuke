@@ -1,4 +1,4 @@
-# main へのpushでテストを通し、配布物だけをGitHub Pagesへ公開する。
+# main へのpushでテスト＋ビルドを通し、dist/ を GitHub Pages へ公開する。
 # 初回だけ、リポジトリの Settings > Pages で Source を "GitHub Actions" にする必要がある。
 name: Deploy to GitHub Pages
 
@@ -18,15 +18,15 @@ concurrency:
 
 jobs:
   verify:
-    name: テスト
+    name: テスト・ビルド
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      # ユニット・ビルド一致・smoke・ブラウザ・PWA を通す。
-      # Chromium が無い環境ではブラウザ系は自動でスキップされる。
+      - run: npm ci
+      # ユニットテスト＋本番ビルド（dist/index.html は単一HTML）
       - run: npm test
 
   deploy:
@@ -38,14 +38,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run build
       - uses: actions/configure-pages@v5
-      - name: 配布物だけを集める
-        run: |
-          mkdir -p site
-          cp index.html manifest.webmanifest sw.js site/
-          cp -r icons site/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: dist
       - id: deployment
         uses: actions/deploy-pages@v4
